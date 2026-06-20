@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipa - KwanzaPay</title>
+<style>
+.level-card {
+  background: white; border-radius: 16px; padding: 14px;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.level-badge {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 14px;
+}
+.task-card-row {
+  background: white; border-radius: 14px; padding: 14px;
+  margin-bottom: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  display: flex; justify-content: space-between; align-items: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>👥 Minha Equipe</h1>
+</div>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="card" style="text-align:center;">
+    <div style="font-size:13px;color:#64748b;">💎 Comissão Total</div>
+    <div style="font-size:32px;font-weight:900;color:#6366f1;" id="totalCommission">0,00 Kz</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+      <div style="background:#f8fafc;padding:14px;border-radius:14px;">
+        <div style="font-size:24px;font-weight:900;" id="totalReg">0</div>
+        <div style="font-size:12px;color:#64748b;">Registados</div>
+      </div>
+      <div style="background:#eef2ff;padding:14px;border-radius:14px;">
+        <div style="font-size:24px;font-weight:900;color:#6366f1;" id="totalAct">0</div>
+        <div style="font-size:12px;color:#64748b;">Ativados (VIP)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link de Convite -->
+  <div class="card">
+    <div class="card-title">📨 Seu Link de Convite</div>
+    <div class="copy-row">
+      <input class="input" id="inviteCode" readonly style="font-weight:800;font-size:18px;text-align:center;color:#6366f1;">
+      <button class="copy-btn" onclick="copyText(document.getElementById('inviteCode').value)">📋 Copiar</button>
+    </div>
+    <div class="copy-row mt-8">
+      <input class="input" id="inviteLink" readonly style="font-size:12px;">
+      <button class="copy-btn" onclick="copyText(document.getElementById('inviteLink').value)">📋 Copiar</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin-top:10px;">👆 Compartilhe este link para convidar amigos</p>
+  </div>
+
+  <!-- Comissões -->
+  <div class="card">
+    <div class="card-title">💰 Sistema de Comissões</div>
+    <div style="background:#f8fafc;padding:14px;border-radius:12px;border-left:4px solid #f59e0b;margin-bottom:12px;">
+      <p style="font-size:13px;color:#64748b;">Ganhe comissões quando seus convidados investirem:</p>
+    </div>
+    <div id="levelsList"></div>
+  </div>
+
+  <!-- Tarefas de Convite -->
+  <div class="card">
+    <div class="card-title">🎯 Tarefas de Convite</div>
+    <div id="tasksList"></div>
+  </div>
+
+  <div style="height:80px;"></div>
+</div>
+
+<script src="/script.js"></script>
+<script>
+const levelColors = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'];
+
+(async function() {
+  if (!requireAuth()) return;
+  const r = await api('/team/info');
+  if (!r.success) return;
+  
+  const d = r.data;
+  document.getElementById('totalCommission').textContent = formatKz(d.totalCommission);
+  document.getElementById('totalReg').textContent = d.totalRegistered;
+  document.getElementById('totalAct').textContent = d.totalActive;
+  document.getElementById('inviteCode').value = d.inviteCode;
+  document.getElementById('inviteLink').value = d.inviteLink;
+  
+  document.getElementById('levelsList').innerHTML = d.levels.map((l,i) => `
+    <div class="level-card">
+      <div class="level-badge" style="background:${levelColors[i]||'#94a3b8'};">
+        L${l.level}
+      </div>
+      <div style="flex:1;">
+        <strong>Nível ${l.level}</strong>
+        <div style="font-size:12px;color:#64748b;">Registados: ${l.registered} · VIPs: ${l.active}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:18px;font-weight:800;color:${levelColors[i]}">${l.commission}%</div>
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('tasksList').innerHTML = `
+    <div style="background:#f8fafc;padding:14px;border-radius:12px;border-left:4px solid #6366f1;">
+      <p style="font-size:13px;color:#64748b;">
+        Convide amigos e ganhe comissões sobre cada investimento que eles fizerem.<br>
+        <strong style="color:#6366f1;">Até 30% de comissão!</strong><br>
+        Um bom promotor pode ganhar <strong>100.000.000 Kz</strong> por mês!
+      </p>
+    </div>
+  `;
+  
+  renderBottomNav('team');
+})();
+</script>
+
+</body>
+</html>

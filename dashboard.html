@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Admin - KwanzaPay</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:#f1f5f9; display:flex; min-height:100vh;
+}
+/* SIDEBAR */
+.sidebar {
+  width:260px; background:white; position:fixed;
+  left:0; top:0; bottom:0; overflow-y:auto;
+  box-shadow:2px 0 20px rgba(0,0,0,0.05);
+  z-index:100;
+}
+.sidebar-logo {
+  padding:20px; font-size:22px; font-weight:900;
+  color:#6366f1; border-bottom:1px solid #f1f5f9;
+  display:flex; align-items:center; gap:10px;
+}
+.nav-item {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 20px; cursor:pointer;
+  color:#64748b; font-size:14px; font-weight:600;
+  transition:all 0.2s; border-left:3px solid transparent;
+}
+.nav-item:hover { background:#f8fafc; color:#6366f1; }
+.nav-item.active {
+  background:#eef2ff; color:#6366f1;
+  border-left-color:#6366f1; font-weight:700;
+}
+.nav-item .icon { font-size:20px; width:24px; text-align:center; }
+.nav-section {
+  padding:12px 20px 6px; font-size:11px; font-weight:700;
+  color:#94a3b8; text-transform:uppercase; letter-spacing:1px;
+}
+.sidebar-footer {
+  padding:16px 20px; border-top:1px solid #f1f5f9;
+  margin-top:auto;
+}
+/* MAIN */
+.main { margin-left:260px; padding:24px; flex:1; min-height:100vh; }
+.topbar {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:24px;
+}
+.topbar h1 { font-size:24px; font-weight:800; color:#1e293b; }
+.topbar-actions { display:flex; gap:12px; align-items:center; }
+/* STATS */
+.stats-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:16px; margin-bottom:24px;
+}
+.stat-card {
+  background:white; border-radius:20px; padding:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.04);
+  position:relative; overflow:hidden;
+}
+.stat-card .label { font-size:13px; color:#64748b; margin-bottom:8px; }
+.stat-card .value { font-size:24px; font-weight:900; color:#1e293b; }
+.stat-card .emoji { position:absolute; right:16px; top:16px; font-size:32px; opacity:0.15; }
+.stat-card.highlight {
+  background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white;
+}
+.stat-card.highlight .label { color:rgba(255,255,255,0.8); }
+.stat-card.highlight .value { color:white; }
+.stat-card.highlight .emoji { opacity:0.3; }
+/* TABLE */
+.table-card {
+  background:white; border-radius:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.04);
+  overflow:hidden;
+}
+.table-header {
+  padding:16px 20px; border-bottom:1px solid #f1f5f9;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.table-header h3 { font-size:16px; font-weight:700; }
+table { width:100%; border-collapse:collapse; }
+th {
+  padding:14px 16px; text-align:left;
+  font-size:12px; font-weight:700; color:#64748b;
+  background:#f8fafc; text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+td { padding:14px 16px; font-size:14px; border-bottom:1px solid #f8fafc; }
+tr:hover { background:#fafbfd; }
+.badge {
+  display:inline-block; padding:4px 12px; border-radius:12px;
+  font-size:11px; font-weight:700;
+}
+.badge-pending { background:#fef3c7; color:#d97706; }
+.badge-approved { background:#d1fae5; color:#059669; }
+.badge-rejected { background:#fee2e2; color:#dc2626; }
+.badge-active { background:#d1fae5; color:#059669; }
+.badge-banned { background:#fee2e2; color:#dc2626; }
+/* BTNS */
+.btn {
+  padding:10px 20px; border:none; border-radius:12px;
+  font-size:13px; font-weight:700; cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-sm { padding:6px 12px; font-size:12px; border-radius:8px; }
+.btn-primary { background:#6366f1; color:white; }
+.btn-success { background:#10b981; color:white; }
+.btn-danger { background:#ef4444; color:white; }
+.btn-warning { background:#f59e0b; color:white; }
+.btn-secondary { background:#f1f5f9; color:#64748b; }
+.btn-outline { background:transparent; border:2px solid #6366f1; color:#6366f1; }
+/* TABS */
+.tab-bar {
+  display:flex; gap:4px; background:#f1f5f9; padding:4px;
+  border-radius:14px; margin-bottom:20px; overflow-x:auto;
+}
+.tab-btn {
+  padding:10px 16px; border:none; border-radius:10px;
+  font-size:13px; font-weight:600; cursor:pointer;
+  background:transparent; color:#64748b; white-space:nowrap;
+  transition:all 0.2s;
+}
+.tab-btn.active { background:white; color:#6366f1; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+/* SEARCH */
+.search-box {
+  display:flex; gap:12px; margin-bottom:16px;
+}
+.search-box input, .search-box select {
+  padding:12px 16px; border:2px solid #e2e8f0; border-radius:12px;
+  font-size:14px; flex:1;
+}
+.search-box input:focus, .search-box select:focus { border-color:#6366f1; outline:none; }
+/* MODAL */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(4px);
+  display:none; align-items:center; justify-content:center;
+  z-index:9000; padding:16px;
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:white; border-radius:24px; padding:24px;
+  max-width:500px; width:100%; max-height:90vh; overflow-y:auto;
+  animation:scaleIn 0.2s;
+}
+@keyframes scaleIn { from { transform:scale(0.9); opacity:0; } to { transform:scale(1); opacity:1; } }
+.modal h3 { font-size:20px; font-weight:800; margin-bottom:16px; }
+.input-group { margin-bottom:14px; }
+.input-label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; color:#374151; }
+.input {
+  width:100%; padding:12px 16px; border:2px solid #e2e8f0;
+  border-radius:12px; font-size:14px;
+}
+.input:focus { border-color:#6366f1; outline:none; }
+.textarea { width:100%; padding:12px 16px; border:2px solid #e2e8f0; border-radius:12px; font-size:14px; resize:vertical; min-height:80px; }
+select.input { appearance:auto; }
+.toast {
+  position:fixed; top:20px; right:20px; padding:14px 24px;
+  border-radius:14px; color:white; font-weight:700; z-index:9999;
+  animation:slideIn 0.3s;
+}
+.toast.success { background:#10b981; }
+.toast.error { background:#ef4444; }
+@keyframes slideIn { from { transform:translateX(100px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+.spinner-loading {
+  display:flex; align-items:center; justify-content:center;
+  padding:40px;
+}
+.spinner-loading::after {
+  content:''; width:40px; height:40px;
+  border:4px solid #e2e8f0; border-top-color:#6366f1;
+  border-radius:50%; animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.page-hidden { display:none; }
+@media (max-width:768px) {
+  .sidebar { width:60px; }
+  .sidebar .nav-label, .sidebar .sidebar-logo span, .nav-section { display:none; }
+  .sidebar-logo { justify-content:center; padding:16px 8px; }
+  .nav-item { padding:14px 0; justify-content:center; }
+  .main { margin-left:60px; padding:16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">💎 <span>KwanzaPay</span></div>
+  
+  <div class="nav-section">Principal</div>
+  <div class="nav-item active" onclick="showTab('dashboard',this)">
+    <span class="icon">📊</span><span class="nav-label">Dashboard</span>
+  </div>
+  <div class="nav-item" onclick="showTab('users',this)">
+    <span class="icon">👥</span><span class="nav-label">Usuários</span>
+  </div>
+  
+  <div class="nav-section">Financeiro</div>
+  <div class="nav-item" onclick="showTab('deposits',this)">
+    <span class="icon">💰</span><span class="nav-label">Depósitos</span>
+  </div>
+  <div class="nav-item" onclick="showTab('withdrawals',this)">
+    <span class="icon">🏦</span><span class="nav-label">Saques</span>
+  </div>
+  
+  <div class="nav-section">Configurações</div>
+  <div class="nav-item" onclick="showTab('vip',this)">
+    <span class="icon">👑</span><span class="nav-label">Planos VIP</span>
+  </div>
+  <div class="nav-item" onclick="showTab('banks',this)">
+    <span class="icon">💳</span><span class="nav-label">Pagamentos</span>
+  </div>
+  <div class="nav-item" onclick="showTab('settings',this)">
+    <span class="icon">⚙️</span><span class="nav-label">Configurações</span>
+  </div>
+  <div class="nav-item" onclick="showTab('blog',this)">
+    <span class="icon">📢</span><span class="nav-label">Blog</span>
+  </div>
+  <div class="nav-item" onclick="showTab('notifications',this)">
+    <span class="icon">🔔</span><span class="nav-label">Notificações</span>
+    <span id="notifBadge" style="background:#ef4444;color:white;padding:2px 8px;border-radius:10px;font-size:11px;display:none;margin-left:auto;"></span>
+  </div>
+  
+  <div class="sidebar-footer">
+    <div class="nav-item" onclick="adminLogout()" style="color:#ef4444;border-left:none;">
+      <span class="icon">🚪</span><span class="nav-label">Sair</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- ===== DASHBOARD TAB ===== -->
+  <div id="tab-dashboard" class="tab-content">
+    <div class="topbar">
+      <h1>📊 Dashboard</h1>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openBroadcast()">📢 Mensagem Geral</button>
+      </div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    
+    <div class="table-card">
+      <div class="table-header">
+        <h3>🔔 Notificações Recentes</h3>
+      </div>
+      <div id="dashNotifs" style="padding:16px;"></div>
+    </div>
+  </div>
+
+  <!-- ===== USERS TAB ===== -->
+  <div id="tab-users" class="tab-content page-hidden">
+    <div class="topbar"><h1>👥 Usuários</h1></div>
+    <div class="search-box">
+      <input type="text" id="userSearch" placeholder="🔍 Buscar por nome, telefone ou código..." onkeyup="loadUsers()">
+      <select id="userStatus" onchange="loadUsers()">
+        <option value="">Todos</option>
+        <option value="active">Ativos</option>
+        <option value="banned">Banidos</option>
+      </select>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Nome</th><th>Telefone</th><th>Código</th><th>VIP</th><th>Depósito</th><th>Saque</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== DEPOSITS TAB ===== -->
+  <div id="tab-deposits" class="tab-content page-hidden">
+    <div class="topbar"><h1>💰 Depósitos</h1></div>
+    <div class="search-box">
+      <select id="depStatus" onchange="loadDeposits()">
+        <option value="pending">Pendentes</option>
+        <option value="approved">Aprovados</option>
+        <option value="rejected">Rejeitados</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Método</th><th>Comprovante</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead>
+        <tbody id="depsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== WITHDRAWALS TAB ===== -->
+  <div id="tab-withdrawals" class="tab-content page-hidden">
+    <div class="topbar"><h1>🏦 Saques</h1></div>
+    <div class="search-box">
+      <select id="witStatus" onchange="loadWithdrawals()">
+        <option value="pending">Pendentes</option>
+        <option value="approved">Aprovados</option>
+        <option value="rejected">Rejeitados</option>
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Taxa</th><th>Líquido</th><th>Conta</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="witsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== VIP TAB ===== -->
+  <div id="tab-vip" class="tab-content page-hidden">
+    <div class="topbar">
+      <h1>👑 Planos VIP</h1>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Nível</th><th>Nome</th><th>Preço</th><th>Tarefas/Dia</th><th>Recompensa</th><th>Lucro/Dia</th><th>Ativo</th><th>Ações</th></tr></thead>
+        <tbody id="vipBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== BANKS TAB ===== -->
+  <div id="tab-banks" class="tab-content page-hidden">
+    <div class="topbar"><h1>💳 Métodos de Pagamento</h1></div>
+    
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="showBankTab('banklist',this)">🏦 Bancos/IBANs</button>
+      <button class="tab-btn" onclick="showBankTab('entity',this)">📲 Entidade</button>
+      <button class="tab-btn" onclick="showBankTab('kwik',this)">💸 KWIK</button>
+    </div>
+    
+    <div id="bankTab-banklist"></div>
+    <div id="bankTab-entity" style="display:none;"></div>
+    <div id="bankTab-kwik" style="display:none;"></div>
+  </div>
+
+  <!-- ===== SETTINGS TAB ===== -->
+  <div id="tab-settings" class="tab-content page-hidden">
+    <div class="topbar"><h1>⚙️ Configurações</h1></div>
+    <div class="table-card" style="padding:24px;max-width:700px;">
+      <h3 style="margin-bottom:16px;">🌐 Site</h3>
+      <div class="input-group">
+        <label class="input-label">Nome do Site</label>
+        <input class="input" id="sSiteName">
+      </div>
+      
+      <h3 style="margin:20px 0 16px;">📞 Contato / Grupos</h3>
+      <div class="input-group"><label class="input-label">Grupo WhatsApp</label><input class="input" id="sWaGroup" placeholder="https://chat.whatsapp.com/..."></div>
+      <div class="input-group"><label class="input-label">Suporte WhatsApp</label><input class="input" id="sWaSupport" placeholder="https://wa.me/244..."></div>
+      <div class="input-group"><label class="input-label">Grupo Telegram</label><input class="input" id="sTgGroup" placeholder="https://t.me/..."></div>
+      <div class="input-group"><label class="input-label">Suporte Telegram</label><input class="input" id="sTgSupport" placeholder="https://t.me/..."></div>
+      
+      <h3 style="margin:20px 0 16px;">💰 Depósito</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group"><label class="input-label">Mínimo</label><input class="input" id="sMinDep" type="number"></div>
+        <div class="input-group"><label class="input-label">Máximo</label><input class="input" id="sMaxDep" type="number"></div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Métodos aceitos</label>
+        <label style="display:block;padding:6px;font-size:14px;"><input type="checkbox" id="sPmBank"> Transferência Bancária</label>
+        <label style="display:block;padding:6px;font-size:14px;"><input type="checkbox" id="sPmEntity"> Entidade/Referência</label>
+        <label style="display:block;padding:6px;font-size:14px;"><input type="checkbox" id="sPmKwik"> KWIK</label>
+      </div>
+      
+      <h3 style="margin:20px 0 16px;">🏦 Saque</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="input-group"><label class="input-label">Mínimo</label><input class="input" id="sMinW" type="number"></div>
+        <div class="input-group"><label class="input-label">Máximo</label><input class="input" id="sMaxW" type="number"></div>
+        <div class="input-group"><label class="input-label">Taxa (%)</label><input class="input" id="sFee" type="number"></div>
+      </div>
+      
+      <h3 style="margin:20px 0 16px;">🤝 Comissões</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="input-group"><label class="input-label">Nível 1 (%)</label><input class="input" id="sC1" type="number"></div>
+        <div class="input-group"><label class="input-label">Nível 2 (%)</label><input class="input" id="sC2" type="number"></div>
+        <div class="input-group"><label class="input-label">Nível 3 (%)</label><input class="input" id="sC3" type="number"></div>
+      </div>
+      
+      <h3 style="margin:20px 0 16px;">📝 Sobre Nós</h3>
+      <textarea class="textarea" id="sAbout" style="min-height:200px;"></textarea>
+      
+      <button class="btn btn-primary" style="margin-top:20px;width:auto;padding:14px 40px;" onclick="saveSettings()">💾 Salvar Configurações</button>
+    </div>
+  </div>
+
+  <!-- ===== BLOG TAB ===== -->
+  <div id="tab-blog" class="tab-content page-hidden">
+    <div class="topbar">
+      <h1>📢 Blog</h1>
+      <button class="btn btn-primary" onclick="openNewBlogPost()">+ Novo Post</button>
+    </div>
+    <div id="blogList"></div>
+  </div>
+
+  <!-- ===== NOTIFICATIONS TAB ===== -->
+  <div id="tab-notifications" class="tab-content page-hidden">
+    <div class="topbar"><h1>🔔 Notificações</h1></div>
+    <div id="notifList"></div>
+  </div>
+
+</div>
+
+<script src="/script.js"></script>
+<script>
+// ===== AUTH CHECK =====
+(function() {
+  const user = getUser();
+  if (!getToken() || !user || user.role !== 'admin') {
+    window.location.href = '/admin.html';
+  }
+})();
+
+// ===== TAB NAVIGATION =====
+let currentTab = 'dashboard';
+function showTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('page-hidden'));
+  document.getElementById('tab-' + tab).classList.remove('page-hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  currentTab = tab;
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'users') loadUsers();
+  if (tab === 'deposits') loadDeposits();
+  if (tab === 'withdrawals') loadWithdrawals();
+  if (tab === 'vip') loadVipPlans();
+  if (tab === 'banks') loadBanks();
+  if (tab === 'settings') loadSettingsAdmin();
+  if (tab === 'blog') loadBlogPosts();
+  if (tab === 'notifications') loadNotifications();
+}
+
+function adminLogout() {
+  localStorage.removeItem('kwanzapay_token');
+  localStorage.removeItem('kwanzapay_user');
+  window.location.href = '/admin.html';
+}
+
+function showModal(html) {
+  const o = document.createElement('div');
+  o.className = 'modal-overlay show';
+  o.innerHTML = `<div class="modal">${html}</div>`;
+  o.onclick = e => { if (e.target === o) o.remove(); };
+  document.body.appendChild(o);
+}
+function closeModal() { document.querySelectorAll('.modal-overlay').forEach(m => m.remove()); }
+
+function toast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function formatKz(v) { return Number(v||0).toLocaleString('pt-AO',{minimumFractionDigits:2}) + ' Kz'; }
+function formatDate(d) { return new Date(d).toLocaleString('pt-AO'); }
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  const r = await api('/admin/dashboard');
+  if (!r.success) return;
+  const s = r.stats;
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="emoji">👥</div><div class="label">Usuários</div><div class="value">${s.totalUsers}</div></div>
+    <div class="stat-card"><div class="emoji">✅</div><div class="label">Ativos</div><div class="value">${s.activeUsers}</div></div>
+    <div class="stat-card"><div class="emoji">🚫</div><div class="label">Banidos</div><div class="value">${s.bannedUsers}</div></div>
+    <div class="stat-card"><div class="emoji">⏳</div><div class="label">Dep. Pendentes</div><div class="value">${s.pendingDeposits}</div></div>
+    <div class="stat-card"><div class="emoji">⏳</div><div class="label">Saques Pendentes</div><div class="value">${s.pendingWithdrawals}</div></div>
+    <div class="stat-card highlight"><div class="emoji">💰</div><div class="label">Total Depositado</div><div class="value">${formatKz(s.totalDeposited)}</div></div>
+    <div class="stat-card highlight"><div class="emoji">🏦</div><div class="label">Total Sacado</div><div class="value">${formatKz(s.totalWithdrawn)}</div></div>
+    <div class="stat-card highlight"><div class="emoji">📈</div><div class="label">💰 Lucro Líquido</div><div class="value">${formatKz(s.profit)}</div></div>
+    <div class="stat-card"><div class="emoji">📅</div><div class="label">Hoje: Usuários</div><div class="value">${s.todayUsers}</div></div>
+    <div class="stat-card"><div class="emoji">📅</div><div class="label">Hoje: Depósitos</div><div class="value">${s.todayDeposits}</div></div>
+    <div class="stat-card"><div class="emoji">📅</div><div class="label">Hoje: Saques</div><div class="value">${s.todayWithdrawals}</div></div>
+  `;
+  
+  const n = await api('/admin/notifications');
+  if (n.success) {
+    document.getElementById('dashNotifs').innerHTML = n.notifications.slice(0,8).map(x => `
+      <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="font-size:14px;">${x.title}</strong>
+          <div style="font-size:13px;color:#64748b;">${x.message}</div>
+        </div>
+        <small style="color:#94a3b8;white-space:nowrap;">${formatDate(x.createdAt)}</small>
+      </div>
+    `).join('') || '<div style="color:#94a3b8;padding:20px;text-align:center;">Sem notificações</div>';
+  }
+}
+
+// ===== USERS =====
+async function loadUsers() {
+  const search = document.getElementById('userSearch').value;
+  const status = document.getElementById('userStatus').value;
+  const r = await api('/admin/users?' + new URLSearchParams({search,status}));
+  if (!r.success) return;
+  document.getElementById('usersBody').innerHTML = r.users.map(u => `
+    <tr>
+      <td><strong>${u.nickname}</strong></td>
+      <td>${u.phone}</td>
+      <td><code style="background:#f1f5f9;padding:4px 8px;border-radius:6px;">${u.inviteCode}</code></td>
+      <td><span class="badge badge-${u.vipLevel>0?'active':'pending'}">VIP ${u.vipLevel}</span></td>
+      <td>${formatKz(u.depositWallet)}</td>
+      <td>${formatKz(u.withdrawWallet)}</td>
+      <td><span class="badge badge-${u.status}">${u.status}</span></td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="viewUser('${u._id}')">👁️</button>
+        <button class="btn btn-sm btn-secondary" onclick="editUser('${u._id}')">✏️</button>
+        <button class="btn btn-sm btn-warning" onclick="adjustBalance('${u._id}','${u.nickname}')">💰</button>
+        <button class="btn btn-sm btn-danger" onclick="banUser('${u._id}')">🚫</button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum usuário</td></tr>';
+}
+
+async function viewUser(id) {
+  const r = await api('/admin/users/' + id);
+  if (!r.success) return;
+  const u = r.user;
+  showModal(`
+    <h3>👤 ${u.nickname} (${u.phone})</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;margin-bottom:16px;">
+      <div><strong>ID:</strong> ${u._id}</div>
+      <div><strong>Código:</strong> ${u.inviteCode}</div>
+      <div><strong>VIP:</strong> Nível ${u.vipLevel}</div>
+      <div><strong>Depósitos:</strong> ${formatKz(u.totalDeposited)}</div>
+      <div><strong>Ganhou:</strong> ${formatKz(u.totalEarned)}</div>
+      <div><strong>Sacou:</strong> ${formatKz(u.totalWithdrawn)}</div>
+      <div><strong>Depósito:</strong> ${formatKz(u.depositWallet)}</div>
+      <div><strong>Saque:</strong> ${formatKz(u.withdrawWallet)}</div>
+      <div><strong>Convidado por:</strong> ${u.invitedBy?.nickname || 'Nenhum'}</div>
+      <div><strong>Depósito feito:</strong> ${u.hasEverDeposited ? '✅ Sim' : '❌ Não'}</div>
+    </div>
+    <h4 style="margin-bottom:8px;">👥 Convidados (${r.referrals.length})</h4>
+    <div style="max-height:150px;overflow-y:auto;background:#f8fafc;border-radius:12px;padding:12px;">
+      ${r.referrals.map(rf => `<div style="padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:13px;">${rf.nickname} (${rf.phone}) VIP ${rf.vipLevel}</div>`).join('') || '<div style="color:#94a3b8;">Sem convidados</div>'}
+    </div>
+  `);
+}
+
+function editUser(id) {
+  showModal(`
+    <h3>✏️ Editar Usuário</h3>
+    <div class="input-group"><label class="input-label">Nome</label><input class="input" id="eNick"></div>
+    <div class="input-group"><label class="input-label">VIP Level</label><input class="input" id="eVip" type="number" min="0" max="10"></div>
+    <div class="input-group"><label class="input-label">Saldo Depósito</label><input class="input" id="eDep" type="number"></div>
+    <div class="input-group"><label class="input-label">Saldo Saque</label><input class="input" id="eWit" type="number"></div>
+    <div class="input-group">
+      <label class="input-label"><input type="checkbox" id="eHasDep"> Já fez depósito</label>
+    </div>
+    <button class="btn btn-primary" onclick="saveEditUser('${id}')" style="width:auto;">Salvar</button>
+  `);
+  api('/admin/users/'+id).then(r => {
+    if (r.success) {
+      document.getElementById('eNick').value = r.user.nickname;
+      document.getElementById('eVip').value = r.user.vipLevel;
+      document.getElementById('eDep').value = r.user.depositWallet;
+      document.getElementById('eWit').value = r.user.withdrawWallet;
+      document.getElementById('eHasDep').checked = r.user.hasEverDeposited;
+    }
+  });
+}
+
+async function saveEditUser(id) {
+  const r = await api('/admin/users/'+id, {
+    method:'PUT', body: JSON.stringify({
+      nickname: document.getElementById('eNick').value,
+      vipLevel: parseInt(document.getElementById('eVip').value),
+      depositWallet: parseFloat(document.getElementById('eDep').value),
+      withdrawWallet: parseFloat(document.getElementById('eWit').value),
+      hasEverDeposited: document.getElementById('eHasDep').checked
+    })
+  });
+  if (r.success) { toast('Salvo!'); closeModal(); loadUsers(); }
+  else toast(r.message, 'error');
+}
+
+function adjustBalance(id, name) {
+  showModal(`
+    <h3>💰 Ajustar Saldo — ${name}</h3>
+    <div class="input-group"><label class="input-label">Tipo</label>
+      <select class="input" id="aType"><option value="add">Adicionar</option><option value="remove">Remover</option></select>
+    </div>
+    <div class="input-group"><label class="input-label">Carteira</label>
+      <select class="input" id="aWallet"><option value="deposit">Depósito</option><option value="withdraw">Retirada</option></select>
+    </div>
+    <div class="input-group"><label class="input-label">Valor</label><input class="input" id="aAmount" type="number"></div>
+    <div class="input-group"><label class="input-label">Nota</label><input class="input" id="aNote" placeholder="Motivo"></div>
+    <button class="btn btn-primary" onclick="confirmAdjust('${id}')" style="width:auto;">Confirmar</button>
+  `);
+}
+
+async function confirmAdjust(id) {
+  const r = await api('/admin/users/'+id+'/adjust', {
+    method:'POST', body: JSON.stringify({
+      type: document.getElementById('aType').value,
+      wallet: document.getElementById('aWallet').value,
+      amount: parseFloat(document.getElementById('aAmount').value),
+      note: document.getElementById('aNote').value
+    })
+  });
+  if (r.success) { toast('Saldo ajustado!'); closeModal(); loadUsers(); }
+  else toast(r.message, 'error');
+}
+
+async function banUser(id) {
+  if (!confirm('Banir/Desbanir este usuário?')) return;
+  const r = await api('/admin/users/'+id+'/ban', {method:'POST'});
+  if (r.success) { toast('Status atualizado: ' + r.message); loadUsers(); }
+}
+
+// ===== DEPOSITS =====
+async function loadDeposits() {
+  const status = document.getElementById('depStatus').value;
+  const r = await api('/admin/deposits?' + new URLSearchParams({status}));
+  if (!r.success) return;
+  document.getElementById('depsBody').innerHTML = r.deposits.map(d => `
+    <tr>
+      <td><code style="font-size:12px;">${d.orderId}</code></td>
+      <td><strong>${d.user?.nickname||'?'}</strong><br><small style="color:#94a3b8;">${d.user?.phone||''}</small></td>
+      <td><strong>${formatKz(d.amount)}</strong></td>
+      <td>${d.method}</td>
+      <td>${d.proof ? `<a href="${d.proof}" target="_blank"><img src="${d.proof}" style="max-width:50px;border-radius:8px;"></a>` : '<span style="color:#94a3b8;">—</span>'}</td>
+      <td><span class="badge badge-${d.status}">${d.status}</span></td>
+      <td><small>${formatDate(d.createdAt)}</small></td>
+      <td>
+        ${d.status==='pending'?`
+          <button class="btn btn-sm btn-success" onclick="approveDep('${d._id}')">✅</button>
+          <button class="btn btn-sm btn-danger" onclick="rejectDep('${d._id}')">❌</button>
+        `:'—'}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum</td></tr>';
+}
+
+async function approveDep(id) {
+  if (!confirm('Aprovar?')) return;
+  const r = await api('/admin/deposits/'+id+'/approve', {method:'POST',body:JSON.stringify({})});
+  if (r.success) { toast('Aprovado!'); loadDeposits(); loadDashboard(); }
+}
+
+async function rejectDep(id) {
+  const note = prompt('Motivo da rejeição:');
+  if (!note) return;
+  const r = await api('/admin/deposits/'+id+'/reject', {method:'POST',body:JSON.stringify({note})});
+  if (r.success) { toast('Rejeitado'); loadDeposits(); }
+}
+
+// ===== WITHDRAWALS =====
+async function loadWithdrawals() {
+  const status = document.getElementById('witStatus').value;
+  const r = await api('/admin/withdrawals?' + new URLSearchParams({status}));
+  if (!r.success) return;
+  document.getElementById('witsBody').innerHTML = r.withdrawals.map(w => `
+    <tr>
+      <td><code style="font-size:12px;">${w.orderId}</code></td>
+      <td><strong>${w.user?.nickname||'?'}</strong><br><small style="color:#94a3b8;">${w.user?.phone||''}</small></td>
+      <td><strong>${formatKz(w.amount)}</strong></td>
+      <td style="color:#ef4444;">-${formatKz(w.fee)}</td>
+      <td style="color:#10b981;">${formatKz(w.netAmount)}</td>
+      <td><strong>${w.bank}</strong><br><small>${w.iban}</small></td>
+      <td><span class="badge badge-${w.status}">${w.status}</span></td>
+      <td>
+        ${w.status==='pending'?`
+          <button class="btn btn-sm btn-success" onclick="approveWit('${w._id}')">✅ Pagar</button>
+          <button class="btn btn-sm btn-danger" onclick="rejectWit('${w._id}')">❌</button>
+        `:'—'}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">Nenhum</td></tr>';
+}
+
+async function approveWit(id) {
+  if (!confirm('Marcar como pago?')) return;
+  const r = await api('/admin/withdrawals/'+id+'/approve', {method:'POST',body:JSON.stringify({})});
+  if (r.success) { toast('Pago!'); loadWithdrawals(); loadDashboard(); }
+}
+
+async function rejectWit(id) {
+  const note = prompt('Motivo:');
+  if (!note) return;
+  const r = await api('/admin/withdrawals/'+id+'/reject', {method:'POST',body:JSON.stringify({note})});
+  if (r.success) { toast('Rejeitado e valor devolvido'); loadWithdrawals(); }
+}
+
+// ===== BROADCAST =====
+function openBroadcast() {
+  showModal(`
+    <h3>📢 Mensagem para Todos</h3>
+    <div class="input-group"><label class="input-label">Título</label><input class="input" id="bcTitle"></div>
+    <div class="input-group"><label class="input-label">Mensagem</label><textarea class="textarea" id="bcMsg"></textarea></div>
+    <button class="btn btn-primary" onclick="sendBroadcast()">Enviar</button>
+  `);
+}
+
+async function sendBroadcast() {
+  const r = await api('/admin/broadcast', {
+    method:'POST', body: JSON.stringify({
+      title: document.getElementById('bcTitle').value,
+      message: document.getElementById('bcMsg').value
+    })
+  });
+  if (r.success) { toast(r.message); closeModal(); }
+  else toast(r.message, 'error');
+}
+
+// LOAD DASHBOARD ON START
+loadDashboard();
+</script>
+
+</body>
+</html>

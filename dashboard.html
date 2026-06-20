@@ -708,7 +708,485 @@ async function sendBroadcast() {
 }
 
 // LOAD DASHBOARD ON START
-loadDashboard();
+loadDashboard();// ===== VIP PLANS =====
+async function loadVipPlans() {
+  const r = await api('/admin/vip-plans');
+  if (!r.success) return;
+  document.getElementById('vipBody').innerHTML = r.plans.map(p => `
+    <tr>
+      <td><span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:4px 12px;border-radius:8px;font-weight:700;">VIP ${p.level}</span></td>
+      <td><strong>${p.name}</strong></td>
+      <td><strong>${formatKz(p.price)}</strong></td>
+      <td>${p.tasksPerDay}</td>
+      <td>${formatKz(p.rewardPerTask)}</td>
+      <td style="color:#10b981;font-weight:700;">${formatKz(p.dailyProfit)}</td>
+      <td>${p.active ? '✅' : '❌'}</td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="editVipPlan('${p._id}')">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteVipPlan('${p._id}','${p.name}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editVipPlan(id) {
+  // Buscar plano atual
+  api('/admin/vip-plans').then(r => {
+    if (!r.success) return;
+    const p = r.plans.find(pl => pl._id === id);
+    if (!p) return;
+    showModal(`
+      <h3>✏️ Editar ${p.name}</h3>
+      <div class="input-group"><label class="input-label">Nome</label><input class="input" id="vpName" value="${p.name}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group"><label class="input-label">Preço (Kz)</label><input class="input" id="vpPrice" type="number" value="${p.price}"></div>
+        <div class="input-group"><label class="input-label">Tarefas/Dia</label><input class="input" id="vpTasks" type="number" value="${p.tasksPerDay}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group"><label class="input-label">Recompensa/Tarefa</label><input class="input" id="vpReward" type="number" value="${p.rewardPerTask}"></div>
+        <div class="input-group"><label class="input-label">Lucro/Dia</label><input class="input" id="vpProfit" type="number" value="${p.dailyProfit}"></div>
+      </div>
+      <div class="input-group">
+        <label class="input-label"><input type="checkbox" id="vpActive" ${p.active?'checked':''}> Ativo</label>
+      </div>
+      <button class="btn btn-primary" onclick="saveVipPlan('${id}')" style="width:auto;">Salvar</button>
+    `);
+  });
+}
+
+async function saveVipPlan(id) {
+  const r = await api('/admin/vip-plans/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name: document.getElementById('vpName').value,
+      price: parseFloat(document.getElementById('vpPrice').value),
+      tasksPerDay: parseInt(document.getElementById('vpTasks').value),
+      rewardPerTask: parseFloat(document.getElementById('vpReward').value),
+      dailyProfit: parseFloat(document.getElementById('vpProfit').value),
+      active: document.getElementById('vpActive').checked
+    })
+  });
+  if (r.success) { toast('Plano atualizado!'); closeModal(); loadVipPlans(); }
+  else toast(r.message, 'error');
+}
+
+async function deleteVipPlan(id, name) {
+  if (!confirm(`Excluir ${name}?`)) return;
+  const r = await api('/admin/vip-plans/' + id, { method: 'DELETE' });
+  if (r.success) { toast('Excluído!'); loadVipPlans(); }
+}
+
+// ===== BANKS & IBANs =====
+async function loadBanks() {
+  const r = await api('/admin/settings');
+  if (!r.success) return;
+  const s = r.settings;
+
+  // BANK LIST
+  document.getElementById('bankTab-banklist').innerHTML = `
+    <div style="margin-bottom:16px;">
+      <button class="btn btn-primary" style="width:auto;" onclick="openAddBank()">+ Adicionar Banco</button>
+    </div>
+    ${s.banks.map(b => `
+      <div class="table-card" style="margin-bottom:16px;">
+        <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f5f9;">
+          <div>
+            <strong style="font-size:16px;">${b.bankCode} — ${b.bankName}</strong>
+            <span class="badge ${b.active?'badge-active':'badge-rejected'}" style="margin-left:8px;">${b.active?'Ativo':'Inativo'}</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-success" onclick="openAddIban('${b._id}','${b.bankName}')">+ IBAN</button>
+            <button class="btn btn-sm btn-secondary" onclick="toggleBank('${b._id}',${!b.active})">${b.active?'Desativar':'Ativar'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteBank('${b._id}')">🗑️</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:8px;">IBANs (${b.ibans.length}/6):</div>
+          ${b.ibans.length > 0 ? b.ibans.map(i => `
+            <div style="background:#f8fafc;padding:12px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong style="font-size:14px;">${i.accountName}</strong>
+                <div style="font-size:13px;color:#64748b;margin-top:2px;">
+                  <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">${i.iban}</code>
+                  ${i.accountNumber ? `<span style="margin-left:8px;">Conta: ${i.accountNumber}</span>` : ''}
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <span class="badge ${i.active?'badge-active':'badge-rejected'}">${i.active?'Ativo':'Inativo'}</span>
+                <button class="btn btn-sm btn-secondary" onclick="toggleIban('${b._id}','${i._id}',${!i.active})">${i.active?'⏸':'▶'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteIban('${b._id}','${i._id}')">🗑️</button>
+              </div>
+            </div>
+          `).join('') : '<div style="color:#94a3b8;font-size:13px;text-align:center;padding:16px;">Nenhum IBAN cadastrado</div>'}
+        </div>
+      </div>
+    `).join('')}
+  `;
+
+  // ENTITY
+  const e = s.entityReference || { entity: '', references: [] };
+  document.getElementById('bankTab-entity').innerHTML = `
+    <div class="table-card" style="padding:24px;">
+      <h3 style="margin-bottom:16px;">📲 Entidade / Referência (Multicaixa Express / ATM)</h3>
+      
+      <div class="input-group"><label class="input-label">Número da Entidade</label><input class="input" id="entVal" value="${e.entity || ''}"></div>
+      <div class="input-group"><label class="input-label">URL da Imagem (instruções)</label><input class="input" id="entImg" value="${e.instructionImage || ''}">
+        ${e.instructionImage ? `<img src="${e.instructionImage}" style="max-width:250px;margin-top:8px;border-radius:12px;">` : ''}
+      </div>
+      <div class="input-group"><label class="input-label">Instruções (texto)</label><textarea class="textarea" id="entInst">${e.instructions || ''}</textarea></div>
+      <button class="btn btn-primary" onclick="saveEntityRef()" style="width:auto;">💾 Salvar</button>
+      
+      <hr style="margin:24px 0;">
+      
+      <h3 style="margin-bottom:16px;">🔢 Referências (rotação aleatória)</h3>
+      <div style="display:flex;gap:12px;align-items:end;">
+        <div class="input-group" style="flex:1;margin:0;"><label class="input-label">Nova Referência</label><input class="input" id="newRef" placeholder="Ex: 123456"></div>
+        <button class="btn btn-success" onclick="addReference()" style="width:auto;white-space:nowrap;">+ Adicionar</button>
+      </div>
+      
+      <div style="margin-top:16px;">
+        ${(e.references || []).map(r => `
+          <div style="background:#f8fafc;padding:12px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <code style="font-size:14px;font-weight:700;">${r.reference}</code>
+              <span class="badge ${r.active?'badge-active':'badge-rejected'}" style="margin-left:8px;">${r.active?'Ativo':'Inativo'}</span>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteReference('${r._id}')">🗑️</button>
+          </div>
+        `).join('') || '<div style="color:#94a3b8;font-size:13px;padding:12px;">Nenhuma referência</div>'}
+      </div>
+    </div>
+  `;
+
+  // KWIK
+  const k = s.kwik || { numbers: [] };
+  document.getElementById('bankTab-kwik').innerHTML = `
+    <div class="table-card" style="padding:24px;">
+      <h3 style="margin-bottom:16px;">💸 KWIK</h3>
+      <div class="input-group"><label class="input-label">URL da Imagem</label><input class="input" id="kImg" value="${k.instructionImage || ''}">
+        ${k.instructionImage ? `<img src="${k.instructionImage}" style="max-width:250px;margin-top:8px;border-radius:12px;">` : ''}
+      </div>
+      <div class="input-group"><label class="input-label">Instruções</label><textarea class="textarea" id="kInst">${k.instructions || ''}</textarea></div>
+      <button class="btn btn-primary" onclick="saveKwik()" style="width:auto;">💾 Salvar</button>
+      
+      <hr style="margin:24px 0;">
+      
+      <h3 style="margin-bottom:16px;">📱 Números KWIK</h3>
+      <div style="display:flex;gap:12px;align-items:end;">
+        <div class="input-group" style="flex:1;margin:0;"><label class="input-label">Número</label><input class="input" id="kNum" placeholder="9XX XXX XXX"></div>
+        <div class="input-group" style="flex:1;margin:0;"><label class="input-label">Nome</label><input class="input" id="kName" placeholder="Titular"></div>
+        <button class="btn btn-success" onclick="addKwikNumber()" style="width:auto;white-space:nowrap;">+ Adicionar</button>
+      </div>
+      
+      <div style="margin-top:16px;">
+        ${(k.numbers || []).map(n => `
+          <div style="background:#f8fafc;padding:12px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>${n.number}</strong> — ${n.name}
+              <span class="badge ${n.active?'badge-active':'badge-rejected'}" style="margin-left:8px;">${n.active?'Ativo':'Inativo'}</span>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteKwikNumber('${n._id}')">🗑️</button>
+          </div>
+        `).join('') || '<div style="color:#94a3b8;font-size:13px;padding:12px;">Nenhum número</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function showBankTab(name, el) {
+  document.querySelectorAll('#tab-banks .tab-btn').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('bankTab-banklist').style.display = name === 'banklist' ? 'block' : 'none';
+  document.getElementById('bankTab-entity').style.display = name === 'entity' ? 'block' : 'none';
+  document.getElementById('bankTab-kwik').style.display = name === 'kwik' ? 'block' : 'none';
+}
+
+function openAddBank() {
+  showModal(`
+    <h3>🏦 Novo Banco</h3>
+    <div class="input-group"><label class="input-label">Código (BFA, BAI...)</label><input class="input" id="bCode" placeholder="BFA"></div>
+    <div class="input-group"><label class="input-label">Nome Completo</label><input class="input" id="bName" placeholder="Banco BFA"></div>
+    <div class="input-group"><label class="input-label">URL Logo (opcional)</label><input class="input" id="bLogo" placeholder="https://..."></div>
+    <button class="btn btn-primary" onclick="addBank()">Salvar</button>
+  `);
+}
+
+async function addBank() {
+  const r = await api('/admin/banks', {
+    method: 'POST',
+    body: JSON.stringify({
+      bankCode: document.getElementById('bCode').value.toUpperCase(),
+      bankName: document.getElementById('bName').value,
+      logo: document.getElementById('bLogo').value
+    })
+  });
+  if (r.success) { toast('Banco adicionado!'); closeModal(); loadBanks(); }
+  else toast(r.message, 'error');
+}
+
+async function toggleBank(id, active) {
+  await api('/admin/banks/' + id, { method: 'PUT', body: JSON.stringify({ active }) });
+  loadBanks();
+}
+
+async function deleteBank(id) {
+  if (!confirm('Excluir banco e todos IBANs?')) return;
+  await api('/admin/banks/' + id, { method: 'DELETE' });
+  toast('Excluído');
+  loadBanks();
+}
+
+function openAddIban(bankId, bankName) {
+  showModal(`
+    <h3>📝 Novo IBAN — ${bankName}</h3>
+    <div class="input-group"><label class="input-label">IBAN</label><input class="input" id="iIban" placeholder="AO06 0040 0000 ..."></div>
+    <div class="input-group"><label class="input-label">Nome do Titular</label><input class="input" id="iName" placeholder="Nome completo"></div>
+    <div class="input-group"><label class="input-label">Nº da Conta (opcional)</label><input class="input" id="iAcc" placeholder="0040.0000..."></div>
+    <button class="btn btn-primary" onclick="addIban('${bankId}')">Salvar</button>
+  `);
+}
+
+async function addIban(bankId) {
+  const r = await api('/admin/banks/' + bankId + '/ibans', {
+    method: 'POST',
+    body: JSON.stringify({
+      iban: document.getElementById('iIban').value,
+      accountName: document.getElementById('iName').value,
+      accountNumber: document.getElementById('iAcc').value
+    })
+  });
+  if (r.success) { toast('IBAN adicionado!'); closeModal(); loadBanks(); }
+  else toast(r.message, 'error');
+}
+
+async function toggleIban(bankId, ibanId, active) {
+  await api('/admin/banks/' + bankId + '/ibans/' + ibanId, {
+    method: 'PUT', body: JSON.stringify({ active })
+  });
+  loadBanks();
+}
+
+async function deleteIban(bankId, ibanId) {
+  if (!confirm('Excluir IBAN?')) return;
+  await api('/admin/banks/' + bankId + '/ibans/' + ibanId, { method: 'DELETE' });
+  toast('Excluído');
+  loadBanks();
+}
+
+// ENTITY
+async function saveEntityRef() {
+  const r = await api('/admin/entity-reference', {
+    method: 'PUT',
+    body: JSON.stringify({
+      entity: document.getElementById('entVal').value,
+      instructionImage: document.getElementById('entImg').value,
+      instructions: document.getElementById('entInst').value
+    })
+  });
+  if (r.success) { toast('Salvo!'); loadBanks(); }
+  else toast(r.message, 'error');
+}
+
+async function addReference() {
+  const ref = document.getElementById('newRef').value;
+  if (!ref) return toast('Insira uma referência', 'error');
+  const r = await api('/admin/references', {
+    method: 'POST', body: JSON.stringify({ reference: ref })
+  });
+  if (r.success) { toast('Adicionado!'); document.getElementById('newRef').value = ''; loadBanks(); }
+}
+
+async function deleteReference(id) {
+  if (!confirm('Excluir referência?')) return;
+  await api('/admin/references/' + id, { method: 'DELETE' });
+  toast('Excluída');
+  loadBanks();
+}
+
+// KWIK
+async function saveKwik() {
+  const r = await api('/admin/kwik', {
+    method: 'PUT',
+    body: JSON.stringify({
+      instructionImage: document.getElementById('kImg').value,
+      instructions: document.getElementById('kInst').value
+    })
+  });
+  if (r.success) { toast('Salvo!'); loadBanks(); }
+  else toast(r.message, 'error');
+}
+
+async function addKwikNumber() {
+  const number = document.getElementById('kNum').value;
+  const name = document.getElementById('kName').value;
+  if (!number || !name) return toast('Preencha número e nome', 'error');
+  const r = await api('/admin/kwik/numbers', {
+    method: 'POST', body: JSON.stringify({ number, name })
+  });
+  if (r.success) { toast('Adicionado!'); document.getElementById('kNum').value = ''; document.getElementById('kName').value = ''; loadBanks(); }
+}
+
+async function deleteKwikNumber(id) {
+  if (!confirm('Excluir?')) return;
+  await api('/admin/kwik/numbers/' + id, { method: 'DELETE' });
+  toast('Excluído');
+  loadBanks();
+}
+
+// ===== SETTINGS =====
+async function loadSettingsAdmin() {
+  const r = await api('/admin/settings');
+  if (!r.success) return;
+  const s = r.settings;
+  document.getElementById('sSiteName').value = s.siteName || '';
+  document.getElementById('sWaGroup').value = s.socialLinks?.whatsappGroup || '';
+  document.getElementById('sWaSupport').value = s.socialLinks?.whatsappSupport || '';
+  document.getElementById('sTgGroup').value = s.socialLinks?.telegramGroup || '';
+  document.getElementById('sTgSupport').value = s.socialLinks?.telegramSupport || '';
+  document.getElementById('sMinDep').value = s.minDeposit || 3000;
+  document.getElementById('sMaxDep').value = s.maxDeposit || 1000000;
+  document.getElementById('sPmBank').checked = s.paymentMethods?.bankTransfer !== false;
+  document.getElementById('sPmEntity').checked = s.paymentMethods?.entityReference !== false;
+  document.getElementById('sPmKwik').checked = s.paymentMethods?.kwik !== false;
+  document.getElementById('sMinW').value = s.minWithdraw || 1200;
+  document.getElementById('sMaxW').value = s.maxWithdraw || 2000000;
+  document.getElementById('sFee').value = s.withdrawFee || 8;
+  document.getElementById('sC1').value = s.commissionLevel1 || 30;
+  document.getElementById('sC2').value = s.commissionLevel2 || 2;
+  document.getElementById('sC3').value = s.commissionLevel3 || 1;
+  document.getElementById('sAbout').value = s.aboutUs || '';
+}
+
+async function saveSettings() {
+  const data = {
+    siteName: document.getElementById('sSiteName').value,
+    socialLinks: {
+      whatsappGroup: document.getElementById('sWaGroup').value,
+      whatsappSupport: document.getElementById('sWaSupport').value,
+      telegramGroup: document.getElementById('sTgGroup').value,
+      telegramSupport: document.getElementById('sTgSupport').value
+    },
+    minDeposit: parseFloat(document.getElementById('sMinDep').value),
+    maxDeposit: parseFloat(document.getElementById('sMaxDep').value),
+    paymentMethods: {
+      bankTransfer: document.getElementById('sPmBank').checked,
+      entityReference: document.getElementById('sPmEntity').checked,
+      kwik: document.getElementById('sPmKwik').checked
+    },
+    minWithdraw: parseFloat(document.getElementById('sMinW').value),
+    maxWithdraw: parseFloat(document.getElementById('sMaxW').value),
+    withdrawFee: parseFloat(document.getElementById('sFee').value),
+    commissionLevel1: parseFloat(document.getElementById('sC1').value),
+    commissionLevel2: parseFloat(document.getElementById('sC2').value),
+    commissionLevel3: parseFloat(document.getElementById('sC3').value),
+    aboutUs: document.getElementById('sAbout').value
+  };
+  
+  const r = await api('/admin/settings', { method: 'PUT', body: JSON.stringify(data) });
+  if (r.success) toast('✅ Configurações salvas!');
+  else toast(r.message || 'Erro', 'error');
+}
+
+// ===== BLOG =====
+async function loadBlogPosts() {
+  const r = await api('/admin/blogs');
+  if (!r.success) return;
+  document.getElementById('blogList').innerHTML = r.blogs.map(b => `
+    <div class="table-card" style="margin-bottom:12px;">
+      <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:start;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <strong>${b.author}</strong>
+            <small style="color:#94a3b8;">${formatDate(b.createdAt)}</small>
+            <span class="badge ${b.approved?'badge-active':'badge-pending'}">${b.approved?'Aprovado':'Pendente'}</span>
+          </div>
+          <p style="font-size:14px;color:#334155;margin-bottom:8px;">${b.message}</p>
+          ${b.image ? `<img src="${b.image}" style="max-width:200px;border-radius:10px;margin-bottom:8px;">` : ''}
+          ${b.reward ? `<div style="color:#10b981;font-weight:700;">💰 Recompensa: ${formatKz(b.reward)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;">
+          ${!b.approved ? `<button class="btn btn-sm btn-success" onclick="approveBlog('${b._id}')">✅</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deleteBlog('${b._id}')">🗑️</button>
+        </div>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:40px;color:#94a3b8;">Nenhum post</div>';
+}
+
+function openNewBlogPost() {
+  showModal(`
+    <h3>📝 Novo Post</h3>
+    <div class="input-group"><label class="input-label">Autor</label><input class="input" id="bAuthor" value="Administrador"></div>
+    <div class="input-group"><label class="input-label">Mensagem</label><textarea class="textarea" id="bMsg" placeholder="Escreva aqui..."></textarea></div>
+    <div class="input-group"><label class="input-label">URL Imagem (opcional)</label><input class="input" id="bImg" placeholder="https://..."></div>
+    <div class="input-group"><label class="input-label">Recompensa Kz (opcional)</label><input class="input" id="bReward" type="number" value="0"></div>
+    <button class="btn btn-primary" onclick="createBlogPost()">Publicar</button>
+  `);
+}
+
+async function createBlogPost() {
+  const r = await api('/admin/blogs', {
+    method: 'POST',
+    body: JSON.stringify({
+      author: document.getElementById('bAuthor').value,
+      message: document.getElementById('bMsg').value,
+      image: document.getElementById('bImg').value || null,
+      reward: parseFloat(document.getElementById('bReward').value) || 0
+    })
+  });
+  if (r.success) { toast('Publicado!'); closeModal(); loadBlogPosts(); }
+  else toast(r.message, 'error');
+}
+
+async function approveBlog(id) {
+  await api('/admin/blogs/' + id + '/approve', { method: 'PUT' });
+  toast('Aprovado');
+  loadBlogPosts();
+}
+
+async function deleteBlog(id) {
+  if (!confirm('Excluir post?')) return;
+  await api('/admin/blogs/' + id, { method: 'DELETE' });
+  toast('Excluído');
+  loadBlogPosts();
+}
+
+// ===== NOTIFICATIONS =====
+async function loadNotifications() {
+  const r = await api('/admin/notifications');
+  if (!r.success) return;
+  
+  if (r.unread > 0) {
+    const badge = document.getElementById('notifBadge');
+    badge.textContent = r.unread;
+    badge.style.display = 'inline';
+  } else {
+    document.getElementById('notifBadge').style.display = 'none';
+  }
+  
+  document.getElementById('notifList').innerHTML = r.notifications.map(n => `
+    <div class="table-card" style="margin-bottom:8px;${n.read ? 'opacity:0.6;' : ''}">
+      <div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <strong style="font-size:14px;">${n.title}</strong>
+            ${!n.read ? '<span style="width:8px;height:8px;background:#ef4444;border-radius:50;display:inline-block;"></span>' : ''}
+          </div>
+          <div style="font-size:13px;color:#64748b;margin-top:2px;">${n.message}</div>
+        </div>
+        <div style="text-align:right;">
+          <small style="color:#94a3b8;">${formatDate(n.createdAt)}</small>
+          ${!n.read ? `<div><button class="btn btn-sm btn-secondary" onclick="markRead('${n._id}')">Lida</button></div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:40px;color:#94a3b8;">Sem notificações</div>';
+}
+
+async function markRead(id) {
+  await api('/admin/notifications/' + id + '/read', { method: 'PUT' });
+  loadNotifications();
+}
 </script>
 
 </body>

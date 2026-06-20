@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histórico - KwanzaPay</title>
+<style>
+.history-item {
+  background: white; border-radius: 16px; padding: 16px;
+  margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  display: flex; align-items: center; gap: 14px;
+}
+.history-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.history-info { flex: 1; }
+.history-title { font-size: 14px; font-weight: 700; }
+.history-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+.history-amount {
+  font-size: 16px; font-weight: 800; text-align: right;
+}
+.history-amount.income { color: #10b981; }
+.history-amount.expense { color: #ef4444; }
+.filter-tabs {
+  display: flex; gap: 8px; margin-bottom: 16px;
+  overflow-x: auto; padding-bottom: 4px;
+}
+.filter-tab {
+  padding: 8px 16px; border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  background: white; color: #64748b;
+  white-space: nowrap; cursor: pointer;
+  border: 2px solid transparent;
+}
+.filter-tab.active {
+  background: #eef2ff; color: #6366f1;
+  border-color: #6366f1;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/profile.html" class="header-back">←</a>
+  <h1>Histórico</h1>
+</div>
+
+<div class="container">
+  
+  <div class="filter-tabs" id="filters">
+    <div class="filter-tab active" onclick="filterHistory('all',this)">Todos</div>
+    <div class="filter-tab" onclick="filterHistory('deposit',this)">Depósitos</div>
+    <div class="filter-tab" onclick="filterHistory('task_reward',this)">Tarefas</div>
+    <div class="filter-tab" onclick="filterHistory('withdraw',this)">Saques</div>
+    <div class="filter-tab" onclick="filterHistory('commission',this)">Comissões</div>
+    <div class="filter-tab" onclick="filterHistory('vip_purchase',this)">VIP</div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script src="/script.js"></script>
+<script>
+let ALL_TRANSACTIONS = [];
+
+const typeConfig = {
+  deposit: { icon: '💰', bg: '#d1fae5', label: 'Depósito' },
+  task_reward: { icon: '📋', bg: '#eef2ff', label: 'Tarefa' },
+  withdraw: { icon: '🏦', bg: '#fee2e2', label: 'Saque' },
+  withdraw_refund: { icon: '↩️', bg: '#fef3c7', label: 'Reembolso' },
+  commission: { icon: '🤝', bg: '#e0e7ff', label: 'Comissão' },
+  vip_purchase: { icon: '👑', bg: '#fce7f3', label: 'VIP' },
+  investment: { icon: '⛏️', bg: '#f3e8ff', label: 'Investimento' },
+  income: { icon: '📈', bg: '#d1fae5', label: 'Renda' },
+  admin_add: { icon: '⚙️', bg: '#d1fae5', label: 'Admin +Admin' },
+  admin_remove: { icon: '⚙️', bg: '#fee2e2', label: 'Admin -Admin' }
+};
+
+(async function() {
+  if (!requireAuth()) return;
+  const r = await api('/user/wallet-history');
+  if (r.success) {
+    ALL_TRANSACTIONS = r.transactions;
+    renderList(ALL_TRANSACTIONS);
+  }
+})();
+
+function filterHistory(type, el) {
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  
+  const filtered = type === 'all' 
+    ? ALL_TRANSACTIONS 
+    : ALL_TRANSACTIONS.filter(t => t.type === type || t.type === type + '_refund');
+  
+  renderList(filtered);
+}
+
+function renderList(transactions) {
+  if (!transactions.length) {
+    document.getElementById('list').innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">📭</div>
+        <h3 style="color:#64748b;">Sem transações</h3>
+      </div>
+    `;
+    return;
+  }
+  
+  document.getElementById('list').innerHTML = transactions.map(t => {
+    const config = typeConfig[t.type] || { icon: '💸', bg: '#f1f5f9', label: t.type };
+    const isIncome = t.amount > 0;
+    
+    return `
+      <div class="history-item">
+        <div class="history-icon" style="background:${config.bg};">${config.icon}</div>
+        <div class="history-info">
+          <div class="history-title">${config.label}</div>
+          <div class="history-desc">${t.description || ''}</div>
+          <div class="history-desc">${formatDate(t.createdAt)}</div>
+        </div>
+        <div class="history-amount ${isIncome ? 'income' : 'expense'}">
+          ${isIncome ? '+' : ''}${formatKz(Math.abs(t.amount))}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+</script>
+
+</body>
+</html>

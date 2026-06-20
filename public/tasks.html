@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarefas - KwanzaPay</title>
+<style>
+.task-card {
+  background: white; border-radius: 20px; padding: 20px;
+  margin-bottom: 12px; box-shadow: 0 4px 20px rgba(99,102,241,0.08);
+  display: flex; align-items: center; gap: 16px;
+  transition: all 0.3s;
+}
+.task-card.completed {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  color: white;
+}
+.task-card.completed .task-reward { color: white !important; }
+.task-card.completed .task-name { color: white; }
+.task-card.completed .task-status { background: rgba(255,255,255,0.2); color: white; }
+.task-icon {
+  width: 60px; height: 60px; border-radius: 16px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 28px; font-weight: 800;
+  flex-shrink: 0;
+}
+.task-card.completed .task-icon {
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+}
+.task-info { flex: 1; }
+.task-name { font-size: 16px; font-weight: 700; }
+.task-reward { font-size: 18px; font-weight: 800; color: #10b981; margin-top: 4px; }
+.task-status {
+  background: #f1f5f9; color: #64748b;
+  padding: 8px 16px; border-radius: 12px;
+  font-size: 13px; font-weight: 700;
+}
+
+.countdown-card {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  color: white; padding: 24px; border-radius: 20px;
+  text-align: center; margin-bottom: 16px;
+}
+.countdown-time {
+  font-size: 36px; font-weight: 900;
+  margin: 12px 0; font-variant-numeric: tabular-nums;
+}
+
+.task-modal-content {
+  text-align: center; padding: 20px 0;
+}
+.progress-circle {
+  width: 120px; height: 120px;
+  margin: 20px auto;
+  position: relative;
+}
+.progress-circle svg { transform: rotate(-90deg); }
+.progress-circle circle {
+  fill: none; stroke-width: 8;
+}
+.progress-bg { stroke: #e2e8f0; }
+.progress-fg {
+  stroke: url(#gradient);
+  stroke-linecap: round;
+  stroke-dasharray: 339.292;
+  stroke-dashoffset: 339.292;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.progress-text {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 900;
+  color: #6366f1;
+}
+
+.empty-state {
+  text-align: center; padding: 40px 20px;
+}
+.empty-state .icon { font-size: 64px; margin-bottom: 16px; }
+.empty-state h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+.empty-state p { color: #64748b; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Tarefas Diárias</h1>
+</div>
+
+<div class="container">
+  
+  <!-- VIP Info -->
+  <div class="card" id="vipInfo" style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:13px;opacity:0.9;">Seu Plano</div>
+        <div style="font-size:24px;font-weight:800;" id="vipName">VIP 0</div>
+        <div style="font-size:13px;opacity:0.9;margin-top:4px;">Lucro diário: <strong id="dailyProfit">0 Kz</strong></div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:32px;font-weight:900;" id="taskCounter">0/0</div>
+        <div style="font-size:12px;opacity:0.9;">Tarefas hoje</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown -->
+  <div class="countdown-card" id="countdownCard" style="display:none;">
+    <div style="font-size:14px;opacity:0.9;">⏱️ Próximo ciclo em:</div>
+    <div class="countdown-time" id="countdown">00:00:00</div>
+    <div style="font-size:13px;opacity:0.9;">As tarefas se renovam à meia-noite</div>
+  </div>
+
+  <!-- Lista de Tarefas -->
+  <div id="tasksList"></div>
+
+  <!-- Estado Vazio -->
+  <div id="emptyState" style="display:none;"></div>
+</div>
+
+<script src="/script.js"></script>
+<script>
+let TASKS_DATA = null;
+let countdownInterval = null;
+
+(async function init() {
+  if (!requireAuth()) return;
+  await loadTasks();
+  renderBottomNav('tasks');
+})();
+
+async function loadTasks() {
+  const r = await api('/tasks/today');
+  
+  if (!r.success) {
+    if (r.requireDeposit) {
+      showEmptyState('💰', 'Realize um Depósito', 'Para acessar as tarefas, faça seu primeiro depósito agora!', 'Depositar Agora', '/deposit.html');
+      return;
+    }
+    if (r.requireVip) {
+      showEmptyState('👑', 'Compre um Plano VIP', 'Para começar a realizar tarefas, escolha um plano VIP!', 'Ver Planos VIP', '/vip.html');
+      return;
+    }
+    toast(r.message, 'error');
+    return;
+  }
+  
+  TASKS_DATA = r;
+  
+  document.getElementById('vipInfo').style.display = 'block';
+  document.getElementById('countdownCard').style.display = 'block';
+  document.getElementById('vipName').textContent = r.vipName;
+  document.getElementById('dailyProfit').textContent = `${r.dailyProfit} Kz`;
+  document.getElementById('taskCounter').textContent = `${r.completed}/${r.total}`;
+  
+  // Renderizar tarefas
+  document.getElementById('tasksList').innerHTML = r.tasks.map(t => `
+    <div class="task-card ${t.completed ? 'completed' : ''}" ${!t.completed ? `onclick="startTask(${t.number})"` : ''} style="cursor:${t.completed ? 'default' : 'pointer'};">
+      <div class="task-icon">${t.completed ? '✅' : '#' + t.number}</div>
+      <div class="task-info">
+        <div class="task-name">Tarefa #${t.number}</div>
+        <div class="task-reward">+${t.reward} Kz</div>
+      </div>
+      <div class="task-status">${t.completed ? 'Concluída' : 'Iniciar'}</div>
+    </div>
+  `).join('');
+  
+  // Iniciar countdown
+  startCountdown(r.secondsUntilReset);
+}
+
+function showEmptyState(icon, title, desc, btnText, btnHref) {
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('emptyState').innerHTML = `
+    <div class="card empty-state">
+      <div class="icon">${icon}</div>
+      <h3>${title}</h3>
+      <p>${desc}</p>
+      <a href="${btnHref}" class="btn btn-primary">${btnText}</a>
+    </div>
+  `;
+}
+
+function startCountdown(seconds) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  let s = seconds;
+  
+  function update() {
+    if (s <= 0) {
+      clearInterval(countdownInterval);
+      document.getElementById('countdown').textContent = '00:00:00';
+      toast('🎉 Novas tarefas disponíveis!', 'success');
+      setTimeout(loadTasks, 1000);
+      return;
+    }
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    document.getElementById('countdown').textContent = 
+      `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    s--;
+  }
+  update();
+  countdownInterval = setInterval(update, 1000);
+}
+
+function startTask(taskNum) {
+  showModal(`
+    <div class="task-modal-content">
+      <div style="font-size:18px;font-weight:800;margin-bottom:8px;">Tarefa #${taskNum}</div>
+      <div style="color:#64748b;margin-bottom:20px;">Aguarde 5 segundos...</div>
+      
+      <div class="progress-circle">
+        <svg width="120" height="120">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#6366f1"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="54" class="progress-bg"/>
+          <circle cx="60" cy="60" r="54" class="progress-fg" id="progressCircle"/>
+        </svg>
+        <div class="progress-text" id="progressText">5</div>
+      </div>
+      
+      <div style="background:linear-gradient(135deg,#10b981,#06b6d4);color:white;padding:14px;border-radius:14px;font-weight:700;">
+        💰 Recompensa: +${TASKS_DATA.rewardPerTask} Kz
+      </div>
+    </div>
+  `);
+  
+  // Animação 5 segundos
+  let remaining = 5;
+  const totalCircumference = 339.292;
+  const interval = 50; // ms
+  const steps = (5000 / interval);
+  let currentStep = 0;
+  
+  const timer = setInterval(() => {
+    currentStep++;
+    const progress = currentStep / steps;
+    const offset = totalCircumference * (1 - progress);
+    document.getElementById('progressCircle').style.strokeDashoffset = offset;
+    
+    const secondsLeft = Math.ceil(5 - (currentStep * interval / 1000));
+    document.getElementById('progressText').textContent = secondsLeft > 0 ? secondsLeft : 0;
+    
+    if (currentStep >= steps) {
+      clearInterval(timer);
+      completeTask();
+    }
+  }, interval);
+}
+
+async function completeTask() {
+  const r = await api('/tasks/complete', { method: 'POST' });
+  closeModal();
+  
+  if (r.success) {
+    showModal(`
+      <div class="task-modal-content">
+        <div style="font-size:64px;animation:scaleIn 0.5s ease;">🎉</div>
+        <div style="font-size:24px;font-weight:800;margin:12px 0;color:#10b981;">Parabéns!</div>
+        <div style="font-size:32px;font-weight:900;color:#6366f1;margin:16px 0;">+${r.reward} Kz</div>
+        <div style="color:#64748b;margin-bottom:20px;">
+          ${r.remaining > 0 
+            ? `Você ainda tem <strong>${r.remaining}</strong> tarefas hoje!` 
+            : 'Todas as tarefas de hoje concluídas! 🎊'}
+        </div>
+        <button class="btn btn-primary" onclick="closeModal();loadTasks()">Continuar</button>
+      </div>
+    `);
+    setTimeout(() => { closeModal(); loadTasks(); }, 3500);
+  } else {
+    toast(r.message, 'error');
+  }
+}
+</script>
+
+</body>
+</html>

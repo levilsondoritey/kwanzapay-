@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depósito - KwanzaPay</title>
+<style>
+.method-card {
+  border: 2px solid #e2e8f0; border-radius: 16px; padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; margin-bottom: 10px; transition: all 0.2s;
+}
+.method-card.selected { border-color: #6366f1; background: #eef2ff; }
+.method-icon { font-size: 28px; }
+.method-name { font-size: 15px; font-weight: 700; }
+.method-desc { font-size: 12px; color: #64748b; }
+.amount-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 12px; }
+.amount-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white; padding: 10px 4px; border-radius: 12px;
+  font-size: 12px; font-weight: 700; text-align: center;
+}
+.copy-row { display: flex; gap: 8px; align-items: center; }
+.copy-row .input { flex: 1; }
+.copy-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white; padding: 0 16px; border-radius: 14px;
+  font-weight: 700; font-size: 13px; white-space: nowrap;
+}
+.bank-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bank-select-item {
+  border: 2px solid #e2e8f0; border-radius: 16px; padding: 16px;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.bank-select-item:hover { border-color: #6366f1; background: #eef2ff; }
+.bank-select-item .icon { font-size: 32px; margin-bottom: 8px; }
+.bank-select-item .name { font-size: 14px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/index.html" class="header-back">←</a>
+  <h1>Depósito</h1>
+</div>
+
+<div class="container">
+
+  <!-- Saldo -->
+  <div class="card" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;text-align:center;">
+    <div style="font-size:13px;opacity:0.9;">💼 Saldo da Conta</div>
+    <div style="font-size:28px;font-weight:900;margin:6px 0;" id="balance">0,00 Kz</div>
+  </div>
+
+  <!-- Valor -->
+  <div class="card">
+    <div class="card-title">Valor do Depósito</div>
+    <input type="number" id="amount" class="input" placeholder="Insira o valor" min="3000">
+    <div class="amount-grid">
+      <button class="amount-btn" onclick="setAmount(5000)">5.000</button>
+      <button class="amount-btn" onclick="setAmount(10000)">10.000</button>
+      <button class="amount-btn" onclick="setAmount(25000)">25.000</button>
+      <button class="amount-btn" onclick="setAmount(50000)">50.000</button>
+      <button class="amount-btn" onclick="setAmount(100000)">100.000</button>
+      <button class="amount-btn" onclick="setAmount(250000)">250.000</button>
+      <button class="amount-btn" onclick="setAmount(500000)">500.000</button>
+      <button class="amount-btn" onclick="setAmount(1000000)">1.000.000</button>
+    </div>
+  </div>
+
+  <!-- Métodos -->
+  <div class="card">
+    <div class="card-title">Método de Pagamento</div>
+    <div id="methodsList"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="createDeposit()">Confirmar Depósito</button>
+  <a href="/history.html" class="btn btn-outline mt-16">📋 Ver Histórico</a>
+
+  <div class="card mt-16">
+    <div class="card-title">📌 Dicas</div>
+    <ul style="font-size:13px;color:#64748b;line-height:2;padding-left:20px;">
+      <li>Depósito mínimo: <strong id="minDep">3.000 Kz</strong></li>
+      <li>Depósito máximo: <strong id="maxDep">1.000.000 Kz</strong></li>
+      <li>Será aprovado pelo administrador em até 24h</li>
+      <li>Após aprovação, compre um plano VIP para começar</li>
+    </ul>
+  </div>
+</div>
+
+<script src="/script.js"></script>
+<script>
+let selectedMethod = 'bank';
+
+(async function() {
+  if (!requireAuth()) return;
+  
+  const d = await api('/user/dashboard');
+  if (d.success) document.getElementById('balance').textContent = formatKz(d.data.depositWallet);
+  
+  await loadSettings();
+  if (APP_SETTINGS) {
+    document.getElementById('minDep').textContent = formatKz(APP_SETTINGS.minDeposit);
+    document.getElementById('maxDep').textContent = formatKz(APP_SETTINGS.maxDeposit);
+    renderMethods();
+  }
+})();
+
+function renderMethods() {
+  const pm = APP_SETTINGS.paymentMethods || {};
+  const methods = [];
+  if (pm.bankTransfer) methods.push({ id:'bank', icon:'🏦', name:'Transferência Bancária', desc:'BFA, BAI, BIC, ATL, BCI' });
+  if (pm.entityReference) methods.push({ id:'entity', icon:'📲', name:'Entidade / Referência', desc:'Multicaixa Express ou ATM' });
+  if (pm.kwik) methods.push({ id:'kwik', icon:'💸', name:'KWIK', desc:'Transferência via KWIK' });
+  
+  document.getElementById('methodsList').innerHTML = methods.map((m,i) => `
+    <div class="method-card ${i===0?'selected':''}" onclick="selectMethod(this,'${m.id}')">
+      <span class="method-icon">${m.icon}</span>
+      <div style="flex:1;">
+        <div class="method-name">${m.name}</div>
+        <div class="method-desc">${m.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectMethod(el, id) {
+  document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedMethod = id;
+}
+
+function setAmount(v) { document.getElementById('amount').value = v; }
+
+async function createDeposit() {
+  const amount = parseFloat(document.getElementById('amount').value);
+  if (!amount || amount < (APP_SETTINGS?.minDeposit || 3000))
+    return toast(`Valor mínimo: ${formatKz(APP_SETTINGS?.minDeposit || 3000)}`, 'error');
+  
+  if (selectedMethod === 'bank') {
+    const r = await api('/deposit/payment-info/bank');
+    if (!r.success || !r.banks.length) return toast('Sem bancos disponíveis', 'error');
+    
+    showModal(`
+      <h3 class="modal-title">🏦 Selecione o Banco</h3>
+      <div class="bank-select-grid">
+        ${r.banks.map(b => `
+          <div class="bank-select-item" onclick="confirmBank('${b._id}',${amount})">
+            <div class="icon">${b.logo ? `<img src="${b.logo}" style="width:40px;height:40px;object-fit:contain;">` : '🏦'}</div>
+            <div class="name">${b.bankName}</div>
+          </div>
+        `).join('')}
+      </div>
+    `);
+  } else if (selectedMethod === 'entity') {
+    const r = await api('/deposit/create', { method:'POST', body: JSON.stringify({ amount, method:'entity' }) });
+    if (r.success) showEntityModal(r.deposit, r.deposit.paymentInfo, amount);
+    else toast(r.message, 'error');
+  } else if (selectedMethod === 'kwik') {
+    const r = await api('/deposit/create', { method:'POST', body: JSON.stringify({ amount, method:'kwik' }) });
+    if (r.success) showKwikModal(r.deposit, r.deposit.paymentInfo, amount);
+    else toast(r.message, 'error');
+  }
+}
+
+async function confirmBank(bankId, amount) {
+  closeModal();
+  const r = await api('/deposit/create', {
+    method:'POST', body: JSON.stringify({ amount, method:'bank', bankId })
+  });
+  if (r.success) showBankModal(r.deposit, r.deposit.paymentInfo, amount);
+  else toast(r.message, 'error');
+}
+
+function showBankModal(deposit, info, amount) {
+  showModal(`
+    <h3 class="modal-title">🏦 Informações Bancárias</h3>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;font-weight:900;color:#6366f1;">${formatKz(amount)}</div>
+      <div class="badge badge-pending mt-8">⏱️ Tempo: 30 min</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Banco</label>
+      <input class="input" value="${info.bank}" readonly>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Titular</label>
+      <div class="copy-row">
+        <input class="input" value="${info.accountName}" readonly>
+        <button class="copy-btn" onclick="copyText('${info.accountName}')">📋 Cópia</button>
+      </div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">IBAN</label>
+      <div class="copy-row">
+        <input class="input" value="${info.iban}" readonly>
+        <button class="copy-btn" onclick="copyText('${info.iban}')">📋 Cópia</button>
+      </div>
+    </div>
+    ${proofSection(deposit._id)}
+  `);
+}
+
+function showEntityModal(deposit, info, amount) {
+  showModal(`
+    <h3 class="modal-title">📲 Entidade / Referência</h3>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;font-weight:900;color:#6366f1;">${formatKz(amount)}</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Entidade</label>
+      <div class="copy-row">
+        <input class="input" value="${info.entity}" readonly>
+        <button class="copy-btn" onclick="copyText('${info.entity}')">📋</button>
+      </div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Referência</label>
+      <div class="copy-row">
+        <input class="input" value="${info.reference}" readonly>
+        <button class="copy-btn" onclick="copyText('${info.reference}')">📋</button>
+      </div>
+    </div>
+    <div style="background:#eef2ff;padding:14px;border-radius:12px;font-size:13px;color:#4f46e5;margin-bottom:16px;">
+      💡 Vá ao Multicaixa Express ou ATM → Pagamentos → Outros Serviços → Use Entidade e Referência
+    </div>
+    ${proofSection(deposit._id)}
+  `);
+}
+
+function showKwikModal(deposit, info, amount) {
+  showModal(`
+    <h3 class="modal-title">💸 Pagamento KWIK</h3>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;font-weight:900;color:#6366f1;">${formatKz(amount)}</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Número KWIK</label>
+      <div class="copy-row">
+        <input class="input" value="${info.kwikNumber}" readonly>
+        <button class="copy-btn" onclick="copyText('${info.kwikNumber}')">📋</button>
+      </div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Nome</label>
+      <input class="input" value="${info.kwikName}" readonly>
+    </div>
+    ${proofSection(deposit._id)}
+  `);
+}
+
+function proofSection(depositId) {
+  return `
+    <div style="margin-top:16px;">
+      <label class="input-label">📷 Comprovante</label>
+      <label style="border:2px dashed #c7d2fe;padding:24px;border-radius:14px;display:block;text-align:center;cursor:pointer;">
+        <div style="font-size:36px;">📤</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px;">Toque para enviar comprovante</div>
+      </label>
+      <input type="file" id="proofFile" accept="image/*" style="display:none;" onchange="uploadProof('${depositId}',this)">
+      <img id="proofPreview" style="display:none;width:100%;border-radius:12px;margin-top:12px;">
+    </div>
+    <button class="btn btn-primary mt-16" onclick="markPaid('${depositId}')">
+      ✅ Eu já paguei
+    </button>
+  `;
+}
+
+async function uploadProof(depositId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('proofPreview').src = URL.createObjectURL(file);
+  document.getElementById('proofPreview').style.display = 'block';
+  
+  const fd = new FormData();
+  fd.append('proof', file);
+  fd.append('depositId', depositId);
+  
+  const r = await api('/deposit/upload-proof', { method:'POST', body: fd });
+  if (r.success) toast(r.message, 'success');
+  else toast(r.message, 'error');
+}
+
+async function markPaid(depositId) {
+  const r = await api('/deposit/mark-paid', { method:'POST', body: JSON.stringify({ depositId }) });
+  if (r.success) { toast(r.message, 'success'); closeModal(); }
+  else toast(r.message, 'error');
+}
+
+// Trigger file input click
+document.addEventListener('click', (e) => {
+  if (e.target.closest('label[style*="dashed"]')) {
+    setTimeout(() => document.getElementById('proofFile')?.click(), 100);
+  }
+});
+</script>
+
+</body>
+</html>

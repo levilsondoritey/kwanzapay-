@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog - KwanzaPay</title>
+<style>
+.blog-post {
+  background: white; border-radius: 20px; padding: 20px;
+  margin-bottom: 12px; box-shadow: 0 4px 20px rgba(99,102,241,0.06);
+}
+.blog-author-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.blog-avatar {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 18px;
+}
+.blog-author { font-weight: 700; font-size: 15px; }
+.blog-time { font-size: 12px; color: #94a3b8; }
+.blog-content { font-size: 14px; line-height: 1.6; color: #334155; }
+.blog-image { width: 100%; border-radius: 14px; margin-top: 12px; }
+.blog-reward { color: #10b981; font-weight: 800; margin-top: 10px; }
+.fab-btn {
+  position: fixed; bottom: 90px; right: 20px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white; font-size: 24px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 30px rgba(99,102,241,0.4);
+  z-index: 50;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📢 Blog</h1>
+</div>
+
+<div class="container">
+  <div id="postsList"></div>
+  
+  <button class="fab-btn" onclick="openCreatePost()">+</button>
+  <div style="height:80px;"></div>
+</div>
+
+<script src="/script.js"></script>
+<script>
+(async function() {
+  await loadPosts();
+  renderBottomNav('blog');
+})();
+
+async function loadPosts() {
+  const r = await api('/blog');
+  if (!r.success) return;
+  
+  document.getElementById('postsList').innerHTML = r.blogs.length ? r.blogs.map(b => `
+    <div class="blog-post">
+      <div class="blog-author-row">
+        <div class="blog-avatar">${b.author.charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="blog-author">${b.author}</div>
+          <div class="blog-time">${formatDate(b.createdAt)}</div>
+        </div>
+      </div>
+      <div class="blog-content">${b.message}</div>
+      ${b.image ? `<img src="${b.image}" class="blog-image">` : ''}
+      ${b.reward ? `<div class="blog-reward">💰 Recompensa: ${formatKz(b.reward)}</div>` : ''}
+    </div>
+  `).join('') : `
+    <div style="text-align:center;padding:40px;">
+      <div style="font-size:48px;">📝</div>
+      <p style="color:#64748b;margin-top:12px;">Nenhum post ainda</p>
+    </div>
+  `;
+}
+
+function openCreatePost() {
+  if (!requireAuth()) return;
+  showModal(`
+    <h3 class="modal-title">✏️ Criar Post</h3>
+    <textarea id="postMsg" class="textarea" placeholder="O que deseja compartilhar?" rows="4"></textarea>
+    <input type="file" id="postImg" accept="image/*" class="input mt-8">
+    <button class="btn btn-primary mt-16" onclick="submitPost()">Publicar</button>
+  `);
+}
+
+async function submitPost() {
+  const msg = document.getElementById('postMsg').value;
+  if (!msg.trim()) return toast('Escreva algo', 'error');
+  
+  const fd = new FormData();
+  fd.append('message', msg);
+  const img = document.getElementById('postImg')?.files[0];
+  if (img) fd.append('image', img);
+  
+  const r = await api('/blog/create', { method:'POST', body: fd });
+  if (r.success) {
+    toast('Post enviado para aprovação', 'success');
+    closeModal();
+  } else toast(r.message, 'error');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - KwanzaPay</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95);
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:24px;
+}
+.card {
+  background:white; border-radius:32px; padding:40px 28px;
+  width:100%; max-width:400px;
+  box-shadow:0 30px 80px rgba(0,0,0,0.4);
+}
+.logo {
+  text-align:center; margin-bottom:32px;
+}
+.logo .icon {
+  width:80px; height:80px; border-radius:24px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 16px; font-size:36px;
+  box-shadow:0 10px 40px rgba(99,102,241,0.4);
+}
+.logo h1 { font-size:28px; font-weight:900; color:#1e293b; }
+.logo p { font-size:13px; color:#64748b; margin-top:4px; }
+.field {
+  position:relative; margin-bottom:16px;
+}
+.field input {
+  width:100%; padding:16px 20px 16px 52px;
+  border:2px solid #e2e8f0; border-radius:16px;
+  font-size:15px; transition:all 0.2s; background:#f8fafc;
+}
+.field input:focus { border-color:#6366f1; background:white; outline:none; }
+.field .icon {
+  position:absolute; left:18px; top:50%; transform:translateY(-50%);
+  font-size:20px;
+}
+.btn {
+  width:100%; padding:16px; border:none; border-radius:16px;
+  font-size:16px; font-weight:800; color:white; cursor:pointer;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  box-shadow:0 8px 30px rgba(99,102,241,0.4);
+  transition:all 0.2s;
+}
+.btn:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(99,102,241,0.5); }
+.btn:active { transform:translateY(0); }
+.error { color:#ef4444; font-size:13px; text-align:center; margin-top:12px; display:none; }
+.spinner { display:none; width:20px; height:20px; border:3px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.toast {
+  position:fixed; top:20px; left:50%; transform:translateX(-50%);
+  background:#ef4444; color:white; padding:14px 24px; border-radius:16px;
+  z-index:9999; font-weight:700; max-width:90%;
+}
+.toast.success { background:#10b981; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="icon">⚙️</div>
+    <h1>KwanzaPay</h1>
+    <p>Painel de Administrador</p>
+  </div>
+  
+  <form id="form">
+    <div class="field">
+      <span class="icon">📧</span>
+      <input type="email" id="email" placeholder="Email do admin" required>
+    </div>
+    <div class="field">
+      <span class="icon">🔒</span>
+      <input type="password" id="password" placeholder="Senha" required>
+    </div>
+    <button type="submit" class="btn" id="submitBtn">
+      <span id="btnText">Entrar</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+    <div class="error" id="error"></div>
+  </form>
+</div>
+
+<script src="/script.js"></script>
+<script>
+// Verificar se já está logado como admin
+(function() {
+  const user = getUser();
+  if (getToken() && user && user.role === 'admin') {
+    window.location.href = '/dashboard.html';
+  }
+})();
+
+document.getElementById('form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const text = document.getElementById('btnText');
+  const spin = document.getElementById('spinner');
+  const err = document.getElementById('error');
+  
+  btn.disabled = true;
+  text.style.display = 'none';
+  spin.style.display = 'block';
+  err.style.display = 'none';
+  
+  const r = await api('/auth/admin/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value
+    })
+  });
+  
+  btn.disabled = false;
+  text.style.display = 'inline';
+  spin.style.display = 'none';
+  
+  if (r.success) {
+    setToken(r.token);
+    setUser(r.user);
+    const t = document.createElement('div');
+    t.className = 'toast success';
+    t.textContent = 'Bem-vindo, Admin! 🎉';
+    document.body.appendChild(t);
+    setTimeout(() => window.location.href = '/dashboard.html', 1000);
+  } else {
+    err.textContent = r.message || 'Credenciais inválidas';
+    err.style.display = 'block';
+  }
+};
+</script>
+
+</body>
+</html>

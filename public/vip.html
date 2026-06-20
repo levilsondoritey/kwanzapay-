@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos VIP - KwanzaPay</title>
+<style>
+.vip-card {
+  background: white; border-radius: 24px; padding: 0;
+  margin-bottom: 16px; box-shadow: 0 4px 20px rgba(99,102,241,0.08);
+  overflow: hidden; transition: all 0.3s;
+}
+.vip-card.active-vip {
+  border: 3px solid var(--primary);
+  box-shadow: 0 8px 30px rgba(99,102,241,0.2);
+}
+.vip-card-header {
+  padding: 20px;
+  text-align: center;
+  color: white;
+  position: relative;
+}
+.vip-card-header.v1 { background: linear-gradient(135deg, #6366f1, #818cf8); }
+.vip-card-header.v2 { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+.vip-card-header.v3 { background: linear-gradient(135deg, #ec4899, #f472b6); }
+.vip-card-header.v4 { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.vip-card-header.v5 { background: linear-gradient(135deg, #10b981, #34d399); }
+.vip-card-header.v6 { background: linear-gradient(135deg, #06b6d4, #22d3ee); }
+.vip-card-header.v7 { background: linear-gradient(135deg, #ef4444, #f87171); }
+.vip-card-header.v8 { background: linear-gradient(135deg, #6366f1, #ec4899); }
+.vip-card-header.v9 { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+.vip-card-header.v10 { background: linear-gradient(135deg, #6366f1, #f59e0b, #ef4444); }
+.vip-card-body { padding: 20px; }
+.vip-card-name { font-size: 20px; font-weight: 800; }
+.vip-card-price { font-size: 28px; font-weight: 900; margin: 8px 0; }
+.vip-card-tasks { font-size: 13px; opacity: 0.9; }
+.vip-info-row {
+  display: flex; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+.vip-info-row:last-child { border-bottom: none; }
+.vip-info-label { color: #64748b; }
+.vip-info-value { font-weight: 700; color: var(--primary); }
+.vip-badge {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+}
+.vip-badge.current {
+  background: white; color: var(--primary);
+}
+.vip-current-tag {
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  color: white; padding: 14px 20px; border-radius: 16px;
+  text-align: center; margin-bottom: 16px;
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>👑 Planos VIP</h1>
+</div>
+
+<div class="container">
+  
+  <!-- VIP Atual -->
+  <div class="vip-current-tag" id="currentVip" style="display:none;">
+    🏆 Seu VIP Atual: <strong id="currentVipName">Sem VIP</strong>
+  </div>
+
+  <!-- Regras -->
+  <div class="card">
+    <div class="card-title">📋 Regras da Plataforma</div>
+    <ul style="font-size:13px;color:#64748b;line-height:2;padding-left:20px;">
+      <li>Cada VIP possui tarefas diárias correspondentes ao nível</li>
+      <li>Lucro diário: <strong style="color:var(--primary);">5% sobre o valor do VIP</strong></li>
+      <li>Saque mínimo: <strong>1.200 Kz</strong></li>
+      <li>Taxa de saque: <strong>8%</strong></li>
+      <li>Para fazer tarefas, primeiro precisa ter VIP ativo</li>
+      <li>As tarefas reiniciam todos os dias às 00:00</li>
+    </ul>
+  </div>
+
+  <!-- Lista de Planos -->
+  <div id="plansList"></div>
+
+  <!-- Exemplo Saque -->
+  <div class="card">
+    <div class="card-title">💡 Exemplo de Saque</div>
+    <div style="background:#f8fafc;padding:16px;border-radius:14px;font-size:14px;">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+        <span>Valor solicitado:</span><strong>10.000 Kz</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+        <span>Taxa (8%):</span><strong style="color:#ef4444;">-800 Kz</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;">
+        <span>Valor recebido:</span><strong style="color:#10b981;">9.200 Kz</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/script.js"></script>
+<script>
+(async function() {
+  if (!requireAuth()) return;
+  
+  const [plansRes, dashRes] = await Promise.all([
+    api('/vip/plans'),
+    api('/user/dashboard')
+  ]);
+  
+  if (dashRes.success) {
+    const d = dashRes.data;
+    if (d.vipLevel > 0) {
+      document.getElementById('currentVip').style.display = 'block';
+      document.getElementById('currentVipName').textContent = d.vipName;
+    }
+  }
+  
+  if (!plansRes.success) return;
+  
+  const currentLevel = dashRes.data?.vipLevel || 0;
+  
+  document.getElementById('plansList').innerHTML = plansRes.plans.map(p => {
+    const colorClass = `v${Math.min(p.level, 10)}`;
+    const isCurrent = p.level === currentLevel;
+    const isHigher = p.level > currentLevel;
+    
+    return `
+    <div class="vip-card ${isCurrent ? 'active-vip' : ''}">
+      <div class="vip-card-header ${colorClass}">
+        ${isCurrent ? '<div class="vip-badge current">Seu Atual</div>' : ''}
+        <div class="vip-card-name">${p.name}</div>
+        <div class="vip-card-price">${p.price.toLocaleString()} Kz</div>
+        <div class="vip-card-tasks">${p.tasksPerDay} tarefa${p.tasksPerDay > 1 ? 's' : ''} por dia</div>
+      </div>
+      <div class="vip-card-body">
+        <div class="vip-info-row">
+          <span class="vip-info-label">Tarefas por dia</span>
+          <span class="vip-info-value">${p.tasksPerDay}</span>
+        </div>
+        <div class="vip-info-row">
+          <span class="vip-info-label">Recompensa por tarefa</span>
+          <span class="vip-info-value">${p.rewardPerTask.toLocaleString()} Kz</span>
+        </div>
+        <div class="vip-info-row">
+          <span class="vip-info-label">Lucro diário</span>
+          <span class="vip-info-value" style="color:#10b981;">${p.dailyProfit.toLocaleString()} Kz</span>
+        </div>
+        <div class="vip-info-row">
+          <span class="vip-info-label">Lucro mensal (aprox.)</span>
+          <span class="vip-info-value" style="color:#10b981;">${(p.dailyProfit * 30).toLocaleString()} Kz</span>
+        </div>
+        
+        ${isCurrent ? `
+          <button class="btn btn-secondary mt-16" disabled>✅ VIP Atual</button>
+        ` : isHigher ? `
+          ${!dashRes.data?.hasEverDeposited ? `
+            <a href="/deposit.html" class="btn btn-primary mt-16">💰 Faça um Depósito Primeiro</a>
+          ` : `
+            <button class="btn btn-primary mt-16" onclick="subscribeVIP(${p.level}, '${p.name}', ${p.price})">
+              🚀 Ativar ${p.name} — ${p.price.toLocaleString()} Kz
+            </button>
+          `}
+        ` : `
+          <button class="btn btn-secondary mt-16" disabled>Plano Inferior</button>
+        `}
+      </div>
+    </div>
+    `;
+  }).join('');
+  
+  renderBottomNav('vip');
+})();
+
+async function subscribeVIP(level, name, price) {
+  if (!confirm(`Ativar ${name} por ${price.toLocaleString()} Kz?`)) return;
+  const r = await api('/vip/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ level })
+  });
+  if (r.success) {
+    toast(`🎉 ${name} ativado com sucesso!`, 'success');
+    setTimeout(() => location.reload(), 1500);
+  } else {
+    toast(r.message, 'error');
+  }
+}
+</script>
+
+</body>
+</html>

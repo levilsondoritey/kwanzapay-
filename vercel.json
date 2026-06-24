@@ -5,11 +5,11 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/admin.html", "dest": "/admin.html" },
+    { "src": "/dashboard.html", "dest": "/dashboard.html" },
+    { "src": "/script.js", "dest": "/public/script.js" },
     { "src": "/uploads/(.*)", "dest": "/uploads/$1" },
-    { "src": "/admin", "dest": "/admin.html" },
-    { "src": "/dashboard", "dest": "/dashboard.html" },
-    { "src": "/register", "dest": "/register.html" },
-    { "src": "/script.js", "dest": "/script.js" },
-    { "src": "/(.*)", "dest": "/$1" }
+    { "src": "/(.*\\.(html|css|js|png|jpg|jpeg|gif|svg|ico|webp))", "dest": "/public/$1" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
   ]
 }

@@ -2,7 +2,9 @@
 <html lang="pt-AO">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
 <title>Admin - KwanzaPay</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -11,15 +13,15 @@ body {
   background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95);
   min-height:100vh; display:flex; align-items:center; justify-content:center;
   padding:24px;
+  -webkit-user-select:none; -moz-user-select:none; user-select:none;
 }
+input { -webkit-user-select:auto; user-select:auto; }
 .card {
   background:white; border-radius:32px; padding:40px 28px;
   width:100%; max-width:400px;
   box-shadow:0 30px 80px rgba(0,0,0,0.4);
 }
-.logo {
-  text-align:center; margin-bottom:32px;
-}
+.logo { text-align:center; margin-bottom:32px; }
 .logo .icon {
   width:80px; height:80px; border-radius:24px;
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
@@ -29,16 +31,14 @@ body {
 }
 .logo h1 { font-size:28px; font-weight:900; color:#1e293b; }
 .logo p { font-size:13px; color:#64748b; margin-top:4px; }
-.field {
-  position:relative; margin-bottom:16px;
-}
+.field { position:relative; margin-bottom:16px; }
 .field input {
   width:100%; padding:16px 20px 16px 52px;
   border:2px solid #e2e8f0; border-radius:16px;
   font-size:15px; transition:all 0.2s; background:#f8fafc;
 }
 .field input:focus { border-color:#6366f1; background:white; outline:none; }
-.field .icon {
+.field .ico {
   position:absolute; left:18px; top:50%; transform:translateY(-50%);
   font-size:20px;
 }
@@ -47,19 +47,33 @@ body {
   font-size:16px; font-weight:800; color:white; cursor:pointer;
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
   box-shadow:0 8px 30px rgba(99,102,241,0.4);
-  transition:all 0.2s;
+  transition:all 0.2s; margin-top:8px;
 }
 .btn:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(99,102,241,0.5); }
 .btn:active { transform:translateY(0); }
+.btn:disabled { opacity:0.6; cursor:not-allowed; transform:none !important; }
 .error { color:#ef4444; font-size:13px; text-align:center; margin-top:12px; display:none; }
-.spinner { display:none; width:20px; height:20px; border:3px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto; }
+.spinner {
+  display:none; width:20px; height:20px;
+  border:3px solid rgba(255,255,255,0.3); border-top-color:white;
+  border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto;
+}
 @keyframes spin { to { transform:rotate(360deg); } }
 .toast {
   position:fixed; top:20px; left:50%; transform:translateX(-50%);
-  background:#ef4444; color:white; padding:14px 24px; border-radius:16px;
+  color:white; padding:14px 24px; border-radius:16px;
   z-index:9999; font-weight:700; max-width:90%;
+  animation:slideDown 0.3s ease;
 }
-.toast.success { background:#10b981; }
+.toast.success { background:linear-gradient(135deg,#10b981,#06b6d4); }
+.toast.error { background:linear-gradient(135deg,#f59e0b,#ef4444); }
+@keyframes slideDown { from { transform:translate(-50%,-100px); opacity:0; } to { transform:translate(-50%,0); opacity:1; } }
+
+/* Segurança */
+.security-notice {
+  margin-top:20px; padding:12px; background:#fef3c7; border-radius:12px;
+  font-size:11px; color:#92400e; text-align:center; line-height:1.5;
+}
 </style>
 </head>
 <body>
@@ -70,71 +84,125 @@ body {
     <h1>KwanzaPay</h1>
     <p>Painel de Administrador</p>
   </div>
-  
-  <form id="form">
+
+  <form id="adminLoginForm">
     <div class="field">
-      <span class="icon">📧</span>
-      <input type="email" id="email" placeholder="Email do admin" required>
+      <span class="ico">📧</span>
+      <input type="email" id="adminEmail" placeholder="Email do administrador" required autocomplete="off">
     </div>
     <div class="field">
-      <span class="icon">🔒</span>
-      <input type="password" id="password" placeholder="Senha" required>
+      <span class="ico">🔒</span>
+      <input type="password" id="adminPassword" placeholder="Senha" required autocomplete="off">
     </div>
     <button type="submit" class="btn" id="submitBtn">
-      <span id="btnText">Entrar</span>
+      <span id="btnText">Entrar no Painel</span>
       <div class="spinner" id="spinner"></div>
     </button>
-    <div class="error" id="error"></div>
+    <div class="error" id="errorMsg"></div>
   </form>
+
+  <div class="security-notice">
+    🔒 Acesso restrito. Todas as ações são registadas e monitoradas.
+  </div>
 </div>
 
-<script src="/script.js"></script>
+<!-- Proteção -->
 <script>
-// Verificar se já está logado como admin
-(function() {
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if (e.key === 'F12') e.preventDefault();
+  if (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) e.preventDefault();
+  if (e.ctrlKey && e.key.toUpperCase() === 'U') e.preventDefault();
+});
+</script>
+
+<script>
+// ============ AUTH HELPERS ============
+const TOKEN_KEY = 'kwanzapay_token';
+const USER_KEY = 'kwanzapay_user';
+const getToken = () => localStorage.getItem(TOKEN_KEY);
+const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
+const getUser = () => { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; } };
+const setUser = (u) => localStorage.setItem(USER_KEY, JSON.stringify(u));
+
+// Verificar se já logado como admin
+(function checkAuth() {
   const user = getUser();
   if (getToken() && user && user.role === 'admin') {
     window.location.href = '/dashboard.html';
   }
 })();
 
-document.getElementById('form').onsubmit = async (e) => {
+// Toast
+function showToast(msg, type = 'error') {
+  const existing = document.querySelectorAll('.toast');
+  existing.forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Login form
+document.getElementById('adminLoginForm').onsubmit = async (e) => {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
   const text = document.getElementById('btnText');
   const spin = document.getElementById('spinner');
-  const err = document.getElementById('error');
-  
+  const err = document.getElementById('errorMsg');
+
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+
+  if (!email || !password) {
+    err.textContent = 'Preencha todos os campos';
+    err.style.display = 'block';
+    return;
+  }
+
   btn.disabled = true;
   text.style.display = 'none';
   spin.style.display = 'block';
   err.style.display = 'none';
-  
-  const r = await api('/auth/admin/login', {
-    method: 'POST',
-    body: JSON.stringify({
-      email: document.getElementById('email').value,
-      password: document.getElementById('password').value
-    })
-  });
-  
-  btn.disabled = false;
-  text.style.display = 'inline';
-  spin.style.display = 'none';
-  
-  if (r.success) {
-    setToken(r.token);
-    setUser(r.user);
-    const t = document.createElement('div');
-    t.className = 'toast success';
-    t.textContent = 'Bem-vindo, Admin! 🎉';
-    document.body.appendChild(t);
-    setTimeout(() => window.location.href = '/dashboard.html', 1000);
-  } else {
-    err.textContent = r.message || 'Credenciais inválidas';
+
+  try {
+    const res = await fetch('/api/auth/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    btn.disabled = false;
+    text.style.display = 'inline';
+    spin.style.display = 'none';
+
+    if (data.success) {
+      setToken(data.token);
+      setUser(data.user);
+      showToast('Bem-vindo, Admin! 🎉', 'success');
+      setTimeout(() => window.location.href = '/dashboard.html', 1000);
+    } else {
+      err.textContent = data.message || 'Credenciais inválidas';
+      err.style.display = 'block';
+      showToast(data.message || 'Credenciais inválidas', 'error');
+    }
+  } catch (error) {
+    btn.disabled = false;
+    text.style.display = 'inline';
+    spin.style.display = 'none';
+    err.textContent = 'Erro de conexão com o servidor';
     err.style.display = 'block';
+    showToast('Erro de conexão', 'error');
   }
 };
+
+// Limpar campos ao carregar
+window.addEventListener('load', () => {
+  document.getElementById('adminEmail').value = '';
+  document.getElementById('adminPassword').value = '';
+});
 </script>
 
 </body>

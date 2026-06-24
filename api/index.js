@@ -23,6 +23,7 @@ try { mongoSanitize = require('express-mongo-sanitize'); } catch(e) { mongoSanit
 try { hpp = require('hpp'); } catch(e) { hpp = null; }
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ============================================================
 // SEGURANÇA — Configurações

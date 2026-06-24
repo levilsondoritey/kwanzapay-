@@ -123,8 +123,8 @@ if (MONGO_URI) {
 // ============================================================
 // UPLOAD — Configuração segura
 // ============================================================
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const uploadDir = '/tmp/uploads';
+try { if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true }); } catch(e) { console.log('Upload dir fallback'); }
 
 const upload = multer({
   storage: multer.diskStorage({
